@@ -1,5 +1,6 @@
 export const siteConfig = {
   name: "灵墨",
+  filingName: "声波小站",
   englishName: "Lingmo",
   subtitle: "AI 内容创作工作台",
   description: "灵墨是一款 AI 内容创作工作台，支持主题研究、大纲生成、文章写作、润色改写、历史版本管理和 SEO 优化。",

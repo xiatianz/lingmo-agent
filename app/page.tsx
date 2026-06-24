@@ -477,7 +477,7 @@ function HomeInner() {
   }, []);
 
   return (
-    <div className="min-h-screen text-slate-900 dark:text-slate-100">
+    <div className="min-h-screen text-slate-900 dark:text-slate-100 lg:h-screen lg:overflow-hidden">
       {/* Toast notification (top-right) */}
       {toastMessage && (
         <div className="fixed top-4 right-4 z-[100] animate-in slide-in-from-top-2 fade-in duration-300">
@@ -531,6 +531,7 @@ function HomeInner() {
             <div className="min-w-0">
               <h1 className="text-lg font-semibold leading-5 tracking-normal text-slate-950 dark:text-slate-50">
                 {t.title}
+                <span className="sr-only">声波小站</span>
               </h1>
               <p className="mt-0.5 text-[11px] font-medium leading-3 text-brand-700 dark:text-brand-300">
                 {(t as any).subtitle}
@@ -568,7 +569,7 @@ function HomeInner() {
           </div>
         </div>
       )}
-      <div className="mx-auto box-border max-w-[1600px] px-4 py-3 lg:h-[calc(100vh-3.5rem)] lg:overflow-hidden">
+      <div className="mx-auto box-border max-w-[1600px] px-4 py-3 lg:h-[calc(100vh-5.25rem)] lg:overflow-hidden">
         <div className="flex flex-col gap-4 lg:h-full lg:flex-row">
           {/* Left sidebar */}
           <aside className="w-full flex-shrink-0 space-y-2 lg:h-full lg:w-[280px] lg:pr-1">
@@ -592,6 +593,7 @@ function HomeInner() {
             <ArticleEditor
               content={content}
               isGenerating={isGenerating}
+              isGeneratingOutline={isGeneratingOutline}
               isRefining={isRefining}
               isLoadingArticle={isLoadingArticle}
               hasOutline={!!outline}
@@ -618,28 +620,51 @@ function HomeInner() {
                 <ExportPanel content={content} />
               </>
             )}
-            {/* Article History - visible below the editor */}
-            <div className="lg:flex-shrink-0">
-              <ArticleHistory
-                onLoadArticle={handleLoadArticle}
-                currentContent={content}
-                currentKeywords={keywords}
-                currentStyle={style}
-                shouldAutoSave={shouldAutoSave}
-                onAutoSaved={handleAutoSaved}
-                currentArticleId={currentArticleId}
-                onSaveError={handleSaveError}
-              />
-            </div>
           </main>
 
           {/* Right sidebar */}
           <aside className="w-full flex-shrink-0 space-y-3 lg:h-full lg:w-[300px] lg:overflow-y-auto lg:pl-1">
             <ArticleStats content={content} />
             <SeoPanel content={content} keywords={keywords} />
+            <ArticleHistory
+              onLoadArticle={handleLoadArticle}
+              currentContent={content}
+              currentKeywords={keywords}
+              currentStyle={style}
+              shouldAutoSave={shouldAutoSave}
+              onAutoSaved={handleAutoSaved}
+              currentArticleId={currentArticleId}
+              onSaveError={handleSaveError}
+            />
           </aside>
         </div>
       </div>
+      <footer className="mx-auto flex h-7 max-w-[1600px] items-center justify-end px-4 text-right text-[10px] leading-4 text-slate-400 dark:text-slate-600">
+        <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
+          <a
+            href="https://beian.miit.gov.cn/"
+            target="_blank"
+            rel="noreferrer"
+            className="transition-colors hover:text-slate-500 dark:hover:text-slate-400"
+          >
+            蜀ICP备2025137675号-2
+          </a>
+          <a
+            href="https://beian.mps.gov.cn/#/query/webSearch?code=51010802001401"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 transition-colors hover:text-slate-500 dark:hover:text-slate-400"
+          >
+            <img
+              src="/brand/备案图标.png"
+              alt=""
+              aria-hidden="true"
+              className="h-3 w-3 opacity-70"
+            />
+            川公网安备51010802001401号
+          </a>
+        </div>
+      </footer>
     </div>
   );
 }

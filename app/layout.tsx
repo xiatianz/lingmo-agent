@@ -16,6 +16,9 @@ export const metadata: Metadata = {
   creator: siteConfig.name,
   publisher: siteConfig.name,
   category: "productivity",
+  other: {
+    "site-filing-name": siteConfig.filingName,
+  },
   alternates: {
     canonical: "/",
     languages: {

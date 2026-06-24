@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
-import type { User } from "@supabase/supabase-js";
+import { createPortal } from "react-dom";
+import type { User, UserIdentity } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import {
   createSupabaseBrowserClient,
@@ -28,7 +29,9 @@ interface PasskeyItem {
 }
 
 type Status = { type: "success" | "error"; text: string };
-type LoginAction = "github" | "passkey" | "email" | null;
+type LoginAction = "github" | "passkey" | "password" | "signup" | null;
+type AccountAction = "link-github" | "link-email" | "password-update" | null;
+type AuthMode = "signin" | "signup";
 
 const DEFAULT_FORM = {
   providerLabel: "OpenAI Compatible",
@@ -44,7 +47,9 @@ export function AuthControls() {
   const [loginOpen, setLoginOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [loginAction, setLoginAction] = useState<LoginAction>(null);
+  const [authMode, setAuthMode] = useState<AuthMode>("signin");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loginStatus, setLoginStatus] = useState<Status | null>(null);
   const [settings, setSettings] = useState<ModelSettings | null>(null);
   const [form, setForm] = useState(DEFAULT_FORM);
@@ -53,6 +58,11 @@ export function AuthControls() {
   const [passkeys, setPasskeys] = useState<PasskeyItem[]>([]);
   const [passkeyLoading, setPasskeyLoading] = useState(false);
   const [securityStatus, setSecurityStatus] = useState<Status | null>(null);
+  const [identities, setIdentities] = useState<UserIdentity[]>([]);
+  const [accountAction, setAccountAction] = useState<AccountAction>(null);
+  const [accountEmail, setAccountEmail] = useState("");
+  const [accountPassword, setAccountPassword] = useState("");
+  const [identityStatus, setIdentityStatus] = useState<Status | null>(null);
 
   useEffect(() => {
     if (!configured) return;
@@ -62,11 +72,13 @@ export function AuthControls() {
       .getUser()
       .then(({ data }) => {
         setUser(data.user ?? null);
+        setAccountEmail(data.user?.email ?? "");
       })
       .finally(() => setLoading(false));
 
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
+      setAccountEmail(session?.user?.email ?? "");
       if (session?.user) setLoginOpen(false);
     });
 
@@ -118,11 +130,26 @@ export function AuthControls() {
     }
   }, [user]);
 
+  const loadIdentities = useCallback(async (clearStatus = true) => {
+    if (!user) return;
+    if (clearStatus) setIdentityStatus(null);
+
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const { data, error } = await supabase.auth.getUserIdentities();
+      if (error) throw error;
+      setIdentities(data.identities ?? []);
+    } catch (error) {
+      setIdentityStatus({ type: "error", text: authErrorMessage(error, "读取绑定方式失败") });
+    }
+  }, [user]);
+
   useEffect(() => {
     if (!dialogOpen || !user) return;
     loadSettings().catch(() => setStatus({ type: "error", text: "读取模型设置失败" }));
     loadPasskeys().catch(() => setSecurityStatus({ type: "error", text: "读取 Passkey 失败" }));
-  }, [dialogOpen, loadPasskeys, loadSettings, user]);
+    loadIdentities().catch(() => setIdentityStatus({ type: "error", text: "读取绑定方式失败" }));
+  }, [dialogOpen, loadIdentities, loadPasskeys, loadSettings, user]);
 
   const signInWithGitHub = useCallback(async () => {
     setLoginAction("github");
@@ -160,32 +187,117 @@ export function AuthControls() {
     }
   }, []);
 
-  const sendEmailMagicLink = useCallback(
+  const signInOrSignUpWithEmail = useCallback(
     async (event: FormEvent) => {
       event.preventDefault();
-      setLoginAction("email");
+      setLoginAction(authMode === "signin" ? "password" : "signup");
       setLoginStatus(null);
 
       try {
         const trimmedEmail = email.trim();
         if (!trimmedEmail) throw new Error("请输入邮箱地址");
+        if (password.length < 6) throw new Error("密码至少需要 6 位");
 
         const supabase = createSupabaseBrowserClient();
-        const { error } = await supabase.auth.signInWithOtp({
-          email: trimmedEmail,
-          options: {
-            emailRedirectTo: `${window.location.origin}/auth/callback`,
-          },
-        });
+        const { error } =
+          authMode === "signin"
+            ? await supabase.auth.signInWithPassword({
+                email: trimmedEmail,
+                password,
+              })
+            : await supabase.auth.signUp({
+                email: trimmedEmail,
+                password,
+                options: {
+                  emailRedirectTo: `${window.location.origin}/auth/callback`,
+                },
+              });
         if (error) throw error;
-        setLoginStatus({ type: "success", text: "登录邮件已发送，请查看邮箱并点击登录链接。" });
+        setLoginStatus({
+          type: "success",
+          text: authMode === "signin" ? "登录成功，正在同步账户。" : "注册成功。若项目开启邮箱验证，请先在邮箱中确认。",
+        });
       } catch (error) {
-        setLoginStatus({ type: "error", text: authErrorMessage(error, "邮箱登录失败") });
+        setLoginStatus({ type: "error", text: authErrorMessage(error, authMode === "signin" ? "邮箱登录失败" : "注册失败") });
       } finally {
         setLoginAction(null);
       }
     },
-    [email]
+    [authMode, email, password]
+  );
+
+  const linkGitHub = useCallback(async () => {
+    setAccountAction("link-github");
+    setIdentityStatus(null);
+
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const { error } = await supabase.auth.linkIdentity({
+        provider: "github",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+      if (error) throw error;
+    } catch (error) {
+      setIdentityStatus({ type: "error", text: authErrorMessage(error, "绑定 GitHub 失败") });
+      setAccountAction(null);
+    }
+  }, []);
+
+  const linkOrUpdateEmail = useCallback(
+    async (event: FormEvent) => {
+      event.preventDefault();
+      setAccountAction("link-email");
+      setIdentityStatus(null);
+
+      try {
+        const trimmedEmail = accountEmail.trim();
+        if (!trimmedEmail) throw new Error("请输入邮箱地址");
+
+        const supabase = createSupabaseBrowserClient();
+        const { error } = await supabase.auth.updateUser({ email: trimmedEmail });
+        if (error) throw error;
+
+        setIdentityStatus({
+          type: "success",
+          text: "邮箱绑定验证已发送，请在邮箱确认后使用邮箱密码登录。",
+        });
+        const { data } = await supabase.auth.getUser();
+        setUser(data.user ?? null);
+        setAccountEmail(data.user?.email ?? trimmedEmail);
+        await loadIdentities(false);
+      } catch (error) {
+        setIdentityStatus({ type: "error", text: authErrorMessage(error, "绑定邮箱失败") });
+      } finally {
+        setAccountAction(null);
+      }
+    },
+    [accountEmail, loadIdentities]
+  );
+
+  const updateAccountPassword = useCallback(
+    async (event: FormEvent) => {
+      event.preventDefault();
+      setAccountAction("password-update");
+      setIdentityStatus(null);
+
+      try {
+        if (accountPassword.length < 6) throw new Error("密码至少需要 6 位");
+
+        const supabase = createSupabaseBrowserClient();
+        const { error } = await supabase.auth.updateUser({ password: accountPassword });
+        if (error) throw error;
+        setAccountPassword("");
+        setIdentityStatus({ type: "success", text: "邮箱密码已设置，下次可直接使用邮箱和密码登录。" });
+        await loadIdentities(false);
+      } catch (error) {
+        setIdentityStatus({ type: "error", text: authErrorMessage(error, "设置密码失败") });
+      } finally {
+        setAccountAction(null);
+      }
+    },
+    [accountPassword, loadIdentities]
   );
 
   const signOut = useCallback(async () => {
@@ -290,6 +402,9 @@ export function AuthControls() {
     (user?.user_metadata?.preferred_username as string | undefined) ||
     user?.email ||
     "已登录";
+  const linkedProviders = new Set(identities.map((identity) => identity.provider));
+  const hasGitHubIdentity = linkedProviders.has("github");
+  const hasEmailIdentity = linkedProviders.has("email") || Boolean(user?.email);
 
   return (
     <div className="flex items-center gap-2">
@@ -319,30 +434,65 @@ export function AuthControls() {
       )}
 
       {loginOpen && !user && (
-        <ModalShell title="登录灵墨" subtitle="选择一种方式同步你的设置、调用额度和加密模型 Key。" onClose={() => setLoginOpen(false)}>
-          <div className="space-y-3">
-            <Button type="button" className="h-11 w-full justify-start" onClick={signInWithGitHub} disabled={Boolean(loginAction)}>
-              <GitHubIcon className="mr-2 h-4 w-4" />
-              {loginAction === "github" ? "正在跳转..." : "使用 GitHub 登录"}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="h-11 w-full justify-start"
-              onClick={signInWithPasskey}
-              disabled={Boolean(loginAction)}
-            >
-              <PasskeyIcon className="mr-2 h-4 w-4" />
-              {loginAction === "passkey" ? "正在验证..." : "使用 Passkey 登录"}
-            </Button>
+        <ModalShell title="登录灵墨" subtitle="GitHub、Passkey、邮箱密码都可以登录；首次使用 Passkey 需要先在账户设置里添加。" onClose={() => setLoginOpen(false)}>
+          <div className="space-y-4">
+            <div className="grid gap-2 sm:grid-cols-2">
+              <Button type="button" className="h-11 justify-start" onClick={signInWithGitHub} disabled={Boolean(loginAction)}>
+                <GitHubIcon className="mr-2 h-4 w-4" />
+                {loginAction === "github" ? "正在跳转..." : "GitHub 登录"}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-11 justify-start"
+                onClick={signInWithPasskey}
+                disabled={Boolean(loginAction)}
+              >
+                <PasskeyIcon className="mr-2 h-4 w-4" />
+                {loginAction === "passkey" ? "正在验证..." : "Passkey 登录"}
+              </Button>
+            </div>
 
             <div className="flex items-center gap-3 py-1">
               <div className="h-px flex-1 bg-slate-200 dark:bg-white/10" />
-              <span className="text-xs text-slate-400">或邮箱登录</span>
+              <span className="text-xs text-slate-400">邮箱账号</span>
               <div className="h-px flex-1 bg-slate-200 dark:bg-white/10" />
             </div>
 
-            <form onSubmit={sendEmailMagicLink} className="space-y-2">
+            <div className="grid grid-cols-2 rounded-xl border border-brand-100 bg-brand-50/70 p-1 dark:border-white/10 dark:bg-white/5">
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthMode("signin");
+                  setLoginStatus(null);
+                }}
+                className={cn(
+                  "h-9 rounded-lg text-sm font-medium transition",
+                  authMode === "signin"
+                    ? "bg-white text-brand-800 shadow-sm dark:bg-slate-900 dark:text-brand-200"
+                    : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100"
+                )}
+              >
+                登录
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthMode("signup");
+                  setLoginStatus(null);
+                }}
+                className={cn(
+                  "h-9 rounded-lg text-sm font-medium transition",
+                  authMode === "signup"
+                    ? "bg-white text-brand-800 shadow-sm dark:bg-slate-900 dark:text-brand-200"
+                    : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100"
+                )}
+              >
+                注册
+              </button>
+            </div>
+
+            <form onSubmit={signInOrSignUpWithEmail} className="space-y-3">
               <Field label="邮箱地址">
                 <input
                   value={email}
@@ -353,14 +503,32 @@ export function AuthControls() {
                   className={inputClassName}
                 />
               </Field>
-              <Button type="submit" variant="secondary" className="h-11 w-full" disabled={Boolean(loginAction) || !email.trim()}>
+              <Field label="密码">
+                <input
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder="至少 6 位"
+                  type="password"
+                  autoComplete={authMode === "signin" ? "current-password" : "new-password"}
+                  className={inputClassName}
+                />
+              </Field>
+              <Button type="submit" variant="secondary" className="h-11 w-full" disabled={Boolean(loginAction) || !email.trim() || password.length < 6}>
                 <MailIcon className="mr-2 h-4 w-4" />
-                {loginAction === "email" ? "发送中..." : "发送登录邮件"}
+                {loginAction === "password"
+                  ? "登录中..."
+                  : loginAction === "signup"
+                    ? "注册中..."
+                    : authMode === "signin"
+                      ? "邮箱密码登录"
+                      : "注册邮箱账号"}
               </Button>
             </form>
 
-            <p className="text-xs leading-5 text-slate-500 dark:text-slate-400">
-              首次使用 Passkey 前，需要先通过邮箱登录后在账户设置里添加。GitHub 登录用户如需添加 Passkey，建议先绑定邮箱登录。
+            <p className="rounded-lg bg-brand-50 px-3 py-2 text-xs leading-5 text-slate-500 dark:bg-white/5 dark:text-slate-400">
+              GitHub OAuth App 的回调地址填写 Supabase：{" "}
+              <span className="font-medium text-slate-700 dark:text-slate-200">https://hptvxnxdhtgivggnhlmi.supabase.co/auth/v1/callback</span>
+              。站点跳转白名单仍需要允许本网站的 <span className="font-medium text-slate-700 dark:text-slate-200">/auth/callback</span>。
             </p>
 
             {loginStatus && <StatusMessage status={loginStatus} />}
@@ -370,18 +538,80 @@ export function AuthControls() {
 
       {dialogOpen && user && (
         <ModalShell title="账户与模型设置" subtitle="管理登录方式、Passkey 和你的 OpenAI 格式模型 Key。" onClose={() => setDialogOpen(false)}>
-          <div className="max-h-[78vh] space-y-5 overflow-y-auto pr-1">
+          <div className="space-y-5">
+            <section className="rounded-xl border border-brand-100/80 bg-brand-50/50 p-4 dark:border-brand-700/40 dark:bg-brand-950/20">
+              <div className="mb-3">
+                <h3 className="text-sm font-semibold text-slate-950 dark:text-slate-50">登录方式绑定</h3>
+                <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                  登录后可以把 GitHub、邮箱密码和 Passkey 绑定到同一个账户。
+                </p>
+              </div>
+
+              <div className="mb-3 grid gap-2 sm:grid-cols-3">
+                <IdentityBadge active={hasGitHubIdentity} icon={<GitHubIcon className="h-4 w-4" />} label="GitHub" />
+                <IdentityBadge active={hasEmailIdentity} icon={<MailIcon className="h-4 w-4" />} label="邮箱" />
+                <IdentityBadge active={passkeys.length > 0} icon={<PasskeyIcon className="h-4 w-4" />} label="Passkey" />
+              </div>
+
+              <div className="space-y-3">
+                {!hasGitHubIdentity && (
+                  <Button type="button" className="h-10 w-full justify-start" onClick={linkGitHub} disabled={Boolean(accountAction)}>
+                    <GitHubIcon className="mr-2 h-4 w-4" />
+                    {accountAction === "link-github" ? "正在跳转..." : "绑定 GitHub 登录"}
+                  </Button>
+                )}
+
+                <form onSubmit={linkOrUpdateEmail} className="grid gap-2 sm:grid-cols-[1fr_auto]">
+                  <Field label={user.email ? "当前邮箱 / 新邮箱" : "绑定邮箱"}>
+                    <input
+                      value={accountEmail}
+                      onChange={(event) => setAccountEmail(event.target.value)}
+                      placeholder="name@example.com"
+                      type="email"
+                      autoComplete="email"
+                      className={inputClassName}
+                    />
+                  </Field>
+                  <div className="flex items-end">
+                    <Button type="submit" variant="outline" className="h-10 w-full sm:w-auto" disabled={Boolean(accountAction) || !accountEmail.trim()}>
+                      {accountAction === "link-email" ? "发送中..." : user.email ? "更新邮箱" : "绑定邮箱"}
+                    </Button>
+                  </div>
+                </form>
+
+                <form onSubmit={updateAccountPassword} className="grid gap-2 sm:grid-cols-[1fr_auto]">
+                  <Field label="邮箱登录密码">
+                    <input
+                      value={accountPassword}
+                      onChange={(event) => setAccountPassword(event.target.value)}
+                      placeholder="至少 6 位"
+                      type="password"
+                      autoComplete="new-password"
+                      className={inputClassName}
+                    />
+                  </Field>
+                  <div className="flex items-end">
+                    <Button type="submit" variant="outline" className="h-10 w-full sm:w-auto" disabled={Boolean(accountAction) || accountPassword.length < 6}>
+                      {accountAction === "password-update" ? "保存中..." : "设置密码"}
+                    </Button>
+                  </div>
+                </form>
+              </div>
+
+              {identityStatus && <StatusMessage status={identityStatus} className="mt-3" />}
+            </section>
+
             <section className="rounded-xl border border-brand-100/80 bg-brand-50/50 p-4 dark:border-brand-700/40 dark:bg-brand-950/20">
               <div className="mb-3 flex items-start justify-between gap-3">
                 <div>
-                  <h3 className="text-sm font-semibold text-slate-950 dark:text-slate-50">账户安全</h3>
+                  <h3 className="text-sm font-semibold text-slate-950 dark:text-slate-50">Passkey 安全密钥</h3>
                   <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
-                    添加 Passkey 后，可用指纹、面容、系统 PIN 或安全密钥快速登录。
+                    添加后，退出登录再回来也能在登录弹窗里直接用 Passkey 登录。
                   </p>
                 </div>
                 <Button type="button" size="sm" onClick={registerPasskey} disabled={passkeyLoading}>
                   <PasskeyIcon className="mr-1.5 h-3.5 w-3.5" />
-                  添加 Passkey
+                  添加
                 </Button>
               </div>
 
@@ -410,7 +640,7 @@ export function AuthControls() {
                   ))
                 ) : (
                   <p className="rounded-lg bg-white/70 px-3 py-2 text-xs text-slate-500 dark:bg-white/5 dark:text-slate-400">
-                    暂未添加 Passkey。邮箱登录用户可直接添加；GitHub 登录用户可能需要先绑定邮箱身份。
+                    暂未添加 Passkey。请先确认 Supabase Dashboard 已开启 Passkey，并配置本站域名为允许来源。
                   </p>
                 )}
               </div>
@@ -500,12 +730,35 @@ function ModalShell({
   children: ReactNode;
   onClose: () => void;
 }) {
-  return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/35 px-4 backdrop-blur-sm">
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onClose]);
+
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[9999] flex min-h-dvh items-center justify-center overflow-y-auto bg-slate-950/55 px-4 py-6 backdrop-blur-md"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
       <div
         role="dialog"
         aria-modal="true"
-        className="w-full max-w-[520px] rounded-xl border border-white/70 bg-white p-5 shadow-[0_24px_70px_rgba(15,23,42,0.28)] dark:border-white/10 dark:bg-slate-950"
+        className="max-h-[calc(100dvh-48px)] w-full max-w-[560px] overflow-y-auto rounded-xl border border-white/70 bg-white p-5 shadow-[0_24px_70px_rgba(15,23,42,0.36)] dark:border-white/10 dark:bg-slate-950"
+        onMouseDown={(event) => event.stopPropagation()}
       >
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
@@ -523,7 +776,8 @@ function ModalShell({
         </div>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -533,6 +787,25 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
       <span className="text-xs font-medium text-slate-600 dark:text-slate-300">{label}</span>
       {children}
     </label>
+  );
+}
+
+function IdentityBadge({ active, icon, label }: { active: boolean; icon: ReactNode; label: string }) {
+  return (
+    <div
+      className={cn(
+        "flex h-10 items-center justify-between rounded-lg border px-3 text-xs font-medium",
+        active
+          ? "border-brand-200 bg-white text-brand-800 dark:border-brand-700/60 dark:bg-white/10 dark:text-brand-100"
+          : "border-slate-200 bg-white/50 text-slate-400 dark:border-white/10 dark:bg-white/5 dark:text-slate-500"
+      )}
+    >
+      <span className="flex items-center gap-2">
+        {icon}
+        {label}
+      </span>
+      <span>{active ? "已绑定" : "未绑定"}</span>
+    </div>
   );
 }
 

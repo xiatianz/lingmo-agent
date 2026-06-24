@@ -18,6 +18,7 @@ interface ArticleVersion {
 interface ArticleEditorProps {
   content: string;
   isGenerating: boolean;
+  isGeneratingOutline?: boolean;
   isRefining?: boolean;
   isLoadingArticle?: boolean;
   hasOutline?: boolean;
@@ -31,6 +32,7 @@ interface ArticleEditorProps {
 export function ArticleEditor({
   content,
   isGenerating,
+  isGeneratingOutline = false,
   isRefining = false,
   isLoadingArticle = false,
   hasOutline = false,
@@ -108,7 +110,7 @@ export function ArticleEditor({
     }
   }, [content]);
 
-  if (!content && !isGenerating) {
+  if (!content && !isGenerating && !isGeneratingOutline) {
     if (hasOutline) return null;
     return (
       <Card className="flex min-h-[360px] items-center justify-center bg-white/75 lg:min-h-0 lg:flex-1 dark:bg-slate-900/70">
@@ -120,6 +122,46 @@ export function ArticleEditor({
           <p className="max-w-sm text-sm leading-6 text-slate-500 dark:text-slate-400">
             {t.readyToCreateDesc}
           </p>
+        </div>
+      </Card>
+    );
+  }
+
+  if (!content && isGeneratingOutline) {
+    return (
+      <Card className="relative flex min-h-[360px] items-center justify-center overflow-hidden bg-white/75 lg:min-h-0 lg:flex-1 dark:bg-slate-900/70">
+        <div className="absolute inset-x-0 top-0 h-1 overflow-hidden bg-brand-100 dark:bg-brand-950">
+          <div className="h-full w-1/2 animate-shimmer rounded-full bg-gradient-to-r from-brand-900 via-brand-600 to-brand-400" />
+        </div>
+        <div className="mx-auto max-w-md px-8 text-center">
+          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-lg bg-gradient-to-br from-brand-900 via-brand-700 to-brand-500 shadow-[0_18px_45px_rgba(72,56,160,0.28)]">
+            <BrandMark className="h-10 w-10" />
+          </div>
+          <h3 className="mb-2 text-lg font-semibold text-slate-950 dark:text-slate-50">
+            {(t as any).generatingOutlineTitle}
+          </h3>
+          <p className="text-sm leading-6 text-slate-500 dark:text-slate-400">
+            {(t as any).generatingOutlineDesc}
+          </p>
+          <div className="mt-6 grid gap-2 text-left">
+            {[
+              t.research,
+              t.outline,
+              t.seo,
+            ].map((label, index) => (
+              <div key={label} className="flex items-center gap-2 rounded-lg border border-white/70 bg-white/55 px-3 py-2 text-xs text-slate-600 shadow-sm dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-100 text-[10px] font-semibold text-brand-700 dark:bg-brand-900/40 dark:text-brand-300">
+                  {index + 1}
+                </span>
+                <span>{label}</span>
+                <span className="ml-auto flex gap-0.5">
+                  <span className="h-1 w-1 animate-bounce rounded-full bg-brand-400 [animation-delay:0ms]" />
+                  <span className="h-1 w-1 animate-bounce rounded-full bg-brand-400 [animation-delay:150ms]" />
+                  <span className="h-1 w-1 animate-bounce rounded-full bg-brand-400 [animation-delay:300ms]" />
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
       </Card>
     );
@@ -158,7 +200,7 @@ export function ArticleEditor({
           {isGenerating && (
             <span className="flex items-center gap-2 text-sm text-brand-600">
               <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-brand-500" />
-              Writing...
+              {(t as any).writingStatus}
             </span>
           )}
           {isRefining && (
@@ -168,7 +210,7 @@ export function ArticleEditor({
             </span>
           )}
           {!isGenerating && !isRefining && content && (
-              <span className="text-sm font-medium text-slate-500 dark:text-slate-400">
+            <span className="text-sm font-medium text-slate-500 dark:text-slate-400">
               {(() => {
                 const chinese = (content.match(/[\u4e00-\u9fff]/g) || []).length;
                 const english = content.replace(/[\u4e00-\u9fff]/g, '').split(/\s+/).filter(Boolean).length;
@@ -279,7 +321,21 @@ export function ArticleEditor({
           "prose-editor transition-opacity duration-300",
           isLoadingArticle ? "opacity-0" : fadeIn ? "opacity-100" : "opacity-100"
         )}>
-          <ReactMarkdown>{content}</ReactMarkdown>
+          {content ? (
+            <ReactMarkdown>{content}</ReactMarkdown>
+          ) : isGenerating ? (
+            <div className="flex min-h-[260px] items-center justify-center text-center">
+              <div className="max-w-sm">
+                <div className="mx-auto mb-4 h-10 w-10 animate-pulse rounded-lg bg-gradient-to-br from-brand-900 via-brand-700 to-brand-500" />
+                <h3 className="mb-2 text-base font-semibold text-slate-900 dark:text-slate-100">
+                  {(t as any).writingStatus}
+                </h3>
+                <p className="text-sm leading-6 text-slate-500 dark:text-slate-400">
+                  {(t as any).writingStatusDesc}
+                </p>
+              </div>
+            </div>
+          ) : null}
         </div>
         {isGenerating && (
           <div className="mt-4 animate-shimmer h-4 rounded" />
@@ -296,7 +352,7 @@ export function ArticleEditor({
             {isGenerating && (
               <span className="flex items-center gap-2 text-sm text-brand-600">
                 <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-brand-500" />
-                Writing...
+                {(t as any).writingStatus}
               </span>
             )}
             {isRefining && (

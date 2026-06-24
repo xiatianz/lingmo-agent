@@ -188,7 +188,7 @@ export function TopicForm({ onGenerate, onStop, isGenerating, preferences }: Top
                     : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
                 )}
               >
-                {(t as any).modeLite || '轻量'}
+                {(t as any).modeLite || '快速生成'}
               </button>
               <button
                 type="button"
@@ -201,13 +201,13 @@ export function TopicForm({ onGenerate, onStop, isGenerating, preferences }: Top
                     : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
                 )}
               >
-                {(t as any).modeDeepAgent || 'DeepAgent'}
+                {(t as any).modeDeepAgent || '深度创作'}
               </button>
             </div>
             <p className="text-[10px] text-slate-500 dark:text-slate-500">
               {mode === "lite"
-                ? ((t as any).modeLiteDesc || '低 Token 消耗，快速生成')
-                : ((t as any).modeDeepAgentDesc || '完整 Agent 框架，功能更丰富')}
+                ? ((t as any).modeLiteDesc || '更快生成正文，适合日常文章和草稿。')
+                : ((t as any).modeDeepAgentDesc || '先检索再组织内容，适合更完整、更深入的长文。')}
             </p>
           </div>
 

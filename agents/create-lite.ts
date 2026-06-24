@@ -12,6 +12,7 @@ import {
     resolveModelEnv,
     sseEvent,
     createSSEResponse,
+    normalizeToolArgsForInvoke,
     type ModelResolution,
 } from './_shared';
 
@@ -187,7 +188,7 @@ async function* eventStream(
 
                     const toolObj = tools.find((t: any) => t.name === tc.name);
                     if (toolObj) {
-                        const result = await toolObj.invoke(tc.args);
+                        const result = await toolObj.invoke(normalizeToolArgsForInvoke(tc.args));
                         const resultStr = typeof result === 'string' ? result : JSON.stringify(result);
                         yield sseEvent({ type: 'tool_result', name: tc.name, content: resultStr.slice(0, 500) });
                         messages.push(new LCToolMessage({ content: resultStr, tool_call_id: tc.id || '' }));

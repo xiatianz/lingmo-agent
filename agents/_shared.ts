@@ -239,6 +239,20 @@ export function sseEvent(data: Record<string, unknown>): string {
     return `data: ${JSON.stringify(data)}\n\n`;
 }
 
+export function normalizeToolArgsForInvoke(args: unknown): unknown {
+    if (!args || typeof args !== 'object' || Array.isArray(args)) return args;
+
+    const normalized: Record<string, unknown> = { ...(args as Record<string, unknown>) };
+    for (const key of ['maxResults', 'limit', 'topK', 'k']) {
+        const value = normalized[key];
+        if (typeof value === 'string' && value.trim()) {
+            const parsed = Number(value);
+            if (Number.isFinite(parsed)) normalized[key] = parsed;
+        }
+    }
+    return normalized;
+}
+
 export function createSSEResponse(
     generator: AsyncGenerator<string> | ((signal?: AbortSignal) => AsyncGenerator<string>),
     signal?: AbortSignal
