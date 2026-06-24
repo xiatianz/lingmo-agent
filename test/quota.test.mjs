@@ -5,6 +5,7 @@ import {
   enforcePlatformDailyQuota,
   getDailyRequestLimit,
   getPlatformUsageStatus,
+  getRemainingRequests,
   parseRequestModelConfig,
 } from "../lib/quota.mjs";
 
@@ -78,4 +79,33 @@ test("increments EdgeOne KV quota for platform API requests", async () => {
   const status = await getPlatformUsageStatus({ request, env });
   assert.equal(status.count, 2);
   assert.equal(status.limit, 2);
+  assert.equal(getRemainingRequests(status), 0);
+});
+
+test("uses EdgeOne KV bindings exposed directly on context", async () => {
+  const kv = createKv();
+  const request = createRequest({ "x-forwarded-for": "203.0.113.11" });
+  const context = { request, env: { DEFAULT_DAILY_REQUEST_LIMIT: "20" }, LINGMO_USAGE_KV: kv };
+
+  const quota = await enforcePlatformDailyQuota(context);
+  const status = await getPlatformUsageStatus(context);
+
+  assert.equal(quota.allowed, true);
+  assert.equal(status.configured, true);
+  assert.equal(status.count, 1);
+  assert.equal(status.remaining, 19);
+});
+
+test("reports remaining requests from limit minus used count", async () => {
+  const kv = createKv();
+  const request = createRequest({ "x-forwarded-for": "203.0.113.12" });
+  const env = { LINGMO_USAGE_KV: kv, DEFAULT_DAILY_REQUEST_LIMIT: "20" };
+
+  const initial = await getPlatformUsageStatus({ request, env });
+  await enforcePlatformDailyQuota({ request, env });
+  const afterOne = await getPlatformUsageStatus({ request, env });
+
+  assert.equal(initial.remaining, 20);
+  assert.equal(afterOne.remaining, 19);
+  assert.equal(getRemainingRequests(afterOne), 19);
 });

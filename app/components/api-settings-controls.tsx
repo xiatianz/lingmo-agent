@@ -19,6 +19,7 @@ interface UsageStatus {
   date: string;
   count: number;
   limit: number;
+  remaining?: number;
 }
 
 interface ApiSettingsControlsProps {
@@ -101,7 +102,7 @@ export function ApiSettingsControls({ refreshKey = 0 }: ApiSettingsControlsProps
     setStatus({ type: "success", text: "已删除本地 API 设置。" });
   }, []);
 
-  const usageLabel = usage ? `${usage.count}/${usage.limit}` : "--/20";
+  const usageLabel = usage ? `${usage.remaining ?? Math.max(0, usage.limit - usage.count)}/${usage.limit}` : "--/20";
 
   return (
     <div className="relative flex items-center gap-2">
@@ -126,7 +127,7 @@ export function ApiSettingsControls({ refreshKey = 0 }: ApiSettingsControlsProps
           {localApiEnabled ? <KeyIcon className="h-3.5 w-3.5" /> : <GaugeIcon className="h-3.5 w-3.5" />}
         </span>
         <span className="hidden whitespace-nowrap sm:inline">
-          {localApiEnabled ? "自有 API" : `今日 ${usageLabel}`}
+          {localApiEnabled ? "自有 API" : `今日剩余 ${usageLabel}`}
         </span>
         <ChevronIcon className={cn("h-3 w-3 transition-transform", open && "rotate-180")} />
       </button>
