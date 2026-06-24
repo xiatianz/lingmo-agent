@@ -3,7 +3,7 @@
  * Given a topic, suggests relevant SEO keywords via LLM.
  */
 import { HumanMessage } from '@langchain/core/messages';
-import { getAgentEnv, createModel, createLogger } from './_shared';
+import { createModel, createLogger, enforceDailyQuota, recordTokenUsage, resolveModelEnv } from './_shared';
 
 const logger = createLogger('suggest-keywords');
 
@@ -28,8 +28,10 @@ export async function onRequest(context: any) {
     }
 
     try {
-        const envVars = getAgentEnv(env);
-        const model = await createModel(envVars, { timeout: 30_000 });
+        const modelConfig = await resolveModelEnv(context);
+        const quotaResponse = await enforceDailyQuota(context, modelConfig);
+        if (quotaResponse) return quotaResponse;
+        const model = await createModel(modelConfig.env, { timeout: 30_000 });
 
         logger.log(`Suggesting keywords for: "${topic}" (conversation: ${conversationId || 'none'})`);
 
@@ -47,6 +49,14 @@ export async function onRequest(context: any) {
 
         const keywords = text.replace(/^["']|["']$/g, '').trim();
         logger.log(`Suggested: "${keywords}"`);
+
+        const usage = (response as any).usage_metadata || (response as any).response_metadata?.usage || {};
+        await recordTokenUsage(
+            context,
+            modelConfig,
+            usage.input_tokens || usage.prompt_tokens || 0,
+            usage.output_tokens || usage.completion_tokens || 0
+        );
 
         return new Response(JSON.stringify({ keywords }), {
             status: 200,

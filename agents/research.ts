@@ -5,7 +5,7 @@
 import { initChatModel, AIMessageChunk, ToolMessage, tool } from 'langchain';
 import { modelRetryMiddleware, modelCallLimitMiddleware } from 'langchain';
 import { createDeepAgent } from 'deepagents';
-import { getAgentEnv, createModel, createLogger, sseEvent, createSSEResponse } from './_shared';
+import { createModel, createLogger, enforceDailyQuota, resolveModelEnv, sseEvent, createSSEResponse } from './_shared';
 
 /**
  * Strip DSML/tool-call markup that sometimes leaks into DeepSeek model output.
@@ -32,11 +32,13 @@ Use the web_search tool to find relevant information, then synthesize it into a 
 
 let agent: Agent | null = null;
 let lastContextTools: any = null;
+let lastModelInstance: Model | null = null;
 
 function getAgent(modelInstance: Model, contextTools: any) {
     // Recreate agent if context.tools changed
-    if (!agent || lastContextTools !== contextTools) {
+    if (!agent || lastContextTools !== contextTools || lastModelInstance !== modelInstance) {
         lastContextTools = contextTools;
+        lastModelInstance = modelInstance;
         // SOP: DeepAgents use toLangChainTools(tool) — returns LangChain StructuredTool[]
         // all() returns raw {name,schema,invoke} which is not StructuredTool
         const tools = contextTools?.toLangChainTools?.(tool) ?? [];
@@ -102,8 +104,10 @@ export async function onRequest(context: any) {
     const signal = request?.signal as AbortSignal | undefined;
     let agentInstance: Agent;
     try {
-        const envVars = getAgentEnv(env);
-        const modelInstance = await createModel(envVars);
+        const modelConfig = await resolveModelEnv(context);
+        const quotaResponse = await enforceDailyQuota(context, modelConfig);
+        if (quotaResponse) return quotaResponse;
+        const modelInstance = await createModel(modelConfig.env);
         agentInstance = getAgent(modelInstance, contextTools);
     } catch (e) {
         return new Response(JSON.stringify({ error: (e as Error).message }), {

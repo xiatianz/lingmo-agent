@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { getSupabaseAuthHeader } from '@/lib/supabase/client';
 import { useI18n } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
@@ -52,9 +53,10 @@ export function ArticleHistory({
 
   const fetchArticles = useCallback(async () => {
     try {
+      const authHeader = await getSupabaseAuthHeader();
       const res = await fetch('/articles', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeader },
         body: JSON.stringify({ action: 'list' }),
       });
       const data = await res.json().catch(() => null);
@@ -86,10 +88,11 @@ export function ArticleHistory({
         const title = firstLine.replace(/^#+\s*/, '').slice(0, 100);
 
         try {
+          const authHeader = await getSupabaseAuthHeader();
           if (currentArticleId) {
             const res = await fetch('/articles', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: { 'Content-Type': 'application/json', ...authHeader },
               body: JSON.stringify({ action: 'addVersion', id: currentArticleId, content: currentContent }),
             });
 
@@ -117,7 +120,7 @@ export function ArticleHistory({
 
             const articleRes = await fetch('/articles', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: { 'Content-Type': 'application/json', ...authHeader },
               body: JSON.stringify({ action: 'get', id: currentArticleId }),
             });
             if (articleRes.ok) {
@@ -129,7 +132,7 @@ export function ArticleHistory({
           } else {
             const res = await fetch('/articles', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: { 'Content-Type': 'application/json', ...authHeader },
               body: JSON.stringify({
                 action: 'save',
                 article: { title, content: currentContent, keywords: currentKeywords, style: currentStyle, createdAt: new Date().toISOString() },
@@ -179,9 +182,10 @@ export function ArticleHistory({
     async (id: string, e: React.MouseEvent) => {
       e.stopPropagation();
       try {
+        const authHeader = await getSupabaseAuthHeader();
         await fetch('/articles', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...authHeader },
           body: JSON.stringify({ action: 'delete', id }),
         });
         setArticles((prev) => prev.filter((a) => a.id !== id));
@@ -205,13 +209,13 @@ export function ArticleHistory({
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-            <svg className="h-4 w-4 text-brand-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
+            <svg className="h-4 w-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             {t.history}
             {articles.length > 0 && (
-              <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-brand-100 px-1.5 text-xs font-medium text-brand-700 dark:bg-brand-900/30 dark:text-brand-400">
+              <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-brand-100 px-1.5 text-xs font-medium text-brand-700 shadow-sm dark:bg-brand-900/30 dark:text-brand-400">
                 {articles.length}
               </span>
             )}
@@ -238,17 +242,17 @@ export function ArticleHistory({
             <p className="text-xs font-medium text-amber-700 dark:text-amber-400">{t.blobNotConfigured}</p>
           </div>
         ) : articles.length === 0 ? (
-          <p className="py-4 text-center text-sm text-gray-500 dark:text-gray-400">{t.noHistory}</p>
+          <p className="py-4 text-center text-sm text-slate-500 dark:text-slate-400">{t.noHistory}</p>
         ) : (
           <ul className="space-y-2 max-h-[300px] overflow-y-auto">
             {articles.map((article) => (
               <li
                 key={article.id}
                 className={cn(
-                  "group cursor-pointer rounded-lg border p-3 transition-colors",
+                  "group cursor-pointer rounded-lg border p-3 shadow-sm transition-colors",
                   article.id === currentArticleId
-                    ? "border-brand-300 bg-brand-50 dark:border-brand-700 dark:bg-brand-900/20"
-                    : "border-gray-100 hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800/50"
+                    ? "border-brand-300 bg-brand-50/80 dark:border-brand-700 dark:bg-brand-900/20"
+                    : "border-white/70 bg-white/50 hover:bg-white/80 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"
                 )}
                 onClick={() => handleLoad(article)}
                 role="button"
@@ -258,10 +262,10 @@ export function ArticleHistory({
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                    <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
                       {article.title}
                     </p>
-                    <div className="mt-1 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                    <div className="mt-1 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                       <span>{new Date(article.createdAt).toLocaleDateString()}</span>
                       <span>&middot;</span>
                       <span>{article.wordCount} {t.characters}</span>

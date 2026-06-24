@@ -6,7 +6,8 @@ type Locale = 'zh' | 'en';
 
 export const translations = {
   zh: {
-    title: '内容创作助手',
+    title: '灵墨',
+    subtitle: 'AI 内容创作工作台',
     topic: '主题',
     topicPlaceholder: '例如：AI 在医疗领域的应用',
     keywords: '关键词',
@@ -46,7 +47,6 @@ export const translations = {
     wordCount: '字数',
     headings: '标题结构',
     suggestions: '优化建议',
-    poweredBy: '由 EdgeOne AI 驱动',
     copyArticle: '复制文章',
     copied: '已复制',
     copy: '复制',
@@ -125,7 +125,8 @@ export const translations = {
     blobNotConfigured: '当前环境存储服务不可用，文章历史与偏好记忆已禁用。部署到 EdgeOne Makers 后将自动启用，无需配置任何环境变量。',
   },
   en: {
-    title: 'Content Creator',
+    title: 'Lingmo',
+    subtitle: 'AI Content Studio',
     topic: 'Topic',
     topicPlaceholder: 'e.g., AI in Healthcare 2024',
     keywords: 'Keywords',
@@ -165,7 +166,6 @@ export const translations = {
     wordCount: 'Word Count',
     headings: 'Heading Structure',
     suggestions: 'Suggestions',
-    poweredBy: 'Powered by EdgeOne AI',
     copyArticle: 'Copy Article',
     copied: 'Copied',
     copy: 'Copy',
@@ -252,14 +252,14 @@ interface I18nContextType {
 }
 
 const I18nContext = createContext<I18nContextType>({
-  locale: 'en',
+  locale: 'zh',
   setLocale: () => {},
-  t: translations.en,
+  t: translations.zh,
 });
 
 export function I18nProvider({ children }: { children: ReactNode }) {
-  // Default to English for first-time visitors.
-  const [locale, setLocale] = useState<Locale>('en');
+  // Default to Chinese for first-time visitors.
+  const [locale, setLocale] = useState<Locale>('zh');
   const t = translations[locale];
   return (
     <I18nContext.Provider value={{ locale, setLocale, t }}>

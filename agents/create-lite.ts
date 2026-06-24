@@ -4,7 +4,16 @@
  */
 import { initChatModel, tool } from 'langchain';
 import { HumanMessage, AIMessage, ToolMessage as LCToolMessage } from '@langchain/core/messages';
-import { getAgentEnv, createModel, createLogger, sseEvent, createSSEResponse } from './_shared';
+import {
+    createModel,
+    createLogger,
+    enforceDailyQuota,
+    recordTokenUsage,
+    resolveModelEnv,
+    sseEvent,
+    createSSEResponse,
+    type ModelResolution,
+} from './_shared';
 
 type Model = Awaited<ReturnType<typeof initChatModel>>;
 
@@ -46,7 +55,14 @@ RULES:
   - "long" ≈ 5000 Chinese characters OR 4000 English words, 10-15 sections
 - IMPORTANT: Do NOT write less than the target length.`;
 
-async function* eventStream(modelInstance: Model, userMessage: string, contextTools: any, signal?: AbortSignal): AsyncGenerator<string> {
+async function* eventStream(
+    context: any,
+    modelConfig: ModelResolution,
+    modelInstance: Model,
+    userMessage: string,
+    contextTools: any,
+    signal?: AbortSignal
+): AsyncGenerator<string> {
     let totalInputTokens = 0;
     let totalOutputTokens = 0;
 
@@ -196,6 +212,9 @@ async function* eventStream(modelInstance: Model, userMessage: string, contextTo
         }
     }
 
+    await recordTokenUsage(context, modelConfig, totalInputTokens, totalOutputTokens).catch((error) => {
+        logger.error('Failed to record token usage:', (error as Error).message);
+    });
     yield sseEvent({ type: 'usage', input_tokens: totalInputTokens, output_tokens: totalOutputTokens, total_tokens: totalInputTokens + totalOutputTokens });
     yield "data: [DONE]\n\n";
 }
@@ -223,12 +242,16 @@ export async function onRequest(context: any) {
 
     const signal = request?.signal as AbortSignal | undefined;
     let modelInstance: Model;
+    let modelConfig: ModelResolution;
     try {
-        modelInstance = await createModel(getAgentEnv(env));
+        modelConfig = await resolveModelEnv(context);
+        const quotaResponse = await enforceDailyQuota(context, modelConfig);
+        if (quotaResponse) return quotaResponse;
+        modelInstance = await createModel(modelConfig.env);
     } catch (e) {
         return new Response(JSON.stringify({ error: (e as Error).message }), { status: 500, headers: { 'Content-Type': 'application/json' } });
     }
 
-    const generator = (s?: AbortSignal) => eventStream(modelInstance, userMessage, contextTools, s);
+    const generator = (s?: AbortSignal) => eventStream(context, modelConfig, modelInstance, userMessage, contextTools, s);
     return createSSEResponse(generator, signal);
 }

@@ -4,6 +4,7 @@ import { useState, useCallback, useMemo } from 'react';
 import { useConversationId } from '@/app/lib/conversation-context';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { getSupabaseAuthHeader } from '@/lib/supabase/client';
 import { useI18n } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
@@ -126,9 +127,10 @@ export function RefineBar({ content, onRefineComplete, onRefineStart, onRefineEn
         };
       }
 
+      const authHeader = await getSupabaseAuthHeader();
       const response = await fetch('/refine', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'makers-conversation-id': conversationId },
+        headers: { 'Content-Type': 'application/json', 'makers-conversation-id': conversationId, ...authHeader },
         body: JSON.stringify(body),
       });
 
@@ -197,8 +199,8 @@ export function RefineBar({ content, onRefineComplete, onRefineStart, onRefineEn
     <Card className="mt-4">
       {/* Section selector */}
       {sections.length > 0 && (
-        <div className="border-b border-gray-100 dark:border-gray-800 px-5 py-3">
-          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2.5">{t.selectSection}:</p>
+        <div className="border-b border-slate-200/70 px-5 py-3 dark:border-white/10">
+          <p className="mb-2.5 text-xs font-medium text-slate-500 dark:text-slate-400">{t.selectSection}:</p>
           <div className="flex items-center gap-2 flex-wrap max-h-[130px] overflow-y-auto py-0.5">
             <button
               onClick={() => setSelectedSection(null)}
@@ -206,7 +208,7 @@ export function RefineBar({ content, onRefineComplete, onRefineStart, onRefineEn
                 "inline-flex items-center rounded-full px-3 py-1 text-xs font-medium transition-colors whitespace-nowrap",
                 selectedSection === null
                   ? "bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-300"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700"
+                  : "bg-white/70 text-slate-600 shadow-sm hover:bg-white dark:bg-white/10 dark:text-slate-400 dark:hover:bg-white/20"
               )}
             >
               {t.fullArticle}
@@ -231,7 +233,7 @@ export function RefineBar({ content, onRefineComplete, onRefineStart, onRefineEn
                     "block max-w-[130px] overflow-hidden text-ellipsis whitespace-nowrap",
                     selectedSection === section.index
                       ? "bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-300 ring-1 ring-brand-300"
-                      : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700"
+                      : "bg-white/70 text-slate-600 shadow-sm hover:bg-white dark:bg-white/10 dark:text-slate-400 dark:hover:bg-white/20"
                   )}
                   title={section.title + (h3Children.length > 0 ? `\n  ${h3Children.map(c => c.title).join('\n  ')}` : '')}
                 >
@@ -258,7 +260,7 @@ export function RefineBar({ content, onRefineComplete, onRefineStart, onRefineEn
                   "block max-w-[110px] overflow-hidden text-ellipsis whitespace-nowrap",
                   selectedSection === section.index
                     ? "bg-brand-50 text-brand-600 dark:bg-brand-900/30 dark:text-brand-300 ring-1 ring-brand-200"
-                    : "bg-gray-50 text-gray-500 hover:bg-gray-100 dark:bg-gray-800/50 dark:text-gray-500 dark:hover:bg-gray-700"
+                    : "bg-white/60 text-slate-500 shadow-sm hover:bg-white dark:bg-white/5 dark:text-slate-500 dark:hover:bg-white/10"
                 )}
                 title={section.title}
               >
@@ -284,9 +286,9 @@ export function RefineBar({ content, onRefineComplete, onRefineStart, onRefineEn
               }
               disabled={effectiveRefining}
               className={cn(
-                'flex h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm',
-                'placeholder:text-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20',
-                'dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500',
+                'flex h-10 w-full rounded-lg border border-white/80 bg-white/70 px-3 py-2 text-sm text-slate-800 shadow-[inset_0_1px_2px_rgba(15,23,42,0.06)]',
+                'placeholder:text-slate-400 focus:border-brand-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/20',
+                'dark:border-white/10 dark:bg-slate-950/40 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-brand-700',
                 'disabled:opacity-50'
               )}
               aria-label={t.refineLabel}
@@ -317,7 +319,7 @@ export function RefineBar({ content, onRefineComplete, onRefineStart, onRefineEn
           </Button>
         </div>
         {selectedSection !== null && sections[selectedSection] && (
-          <p className="mt-2 text-xs text-brand-500 font-medium">
+          <p className="mt-2 text-xs font-medium text-brand-500">
             {t.sectionMode}: {sections[selectedSection].title}
           </p>
         )}

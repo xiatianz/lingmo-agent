@@ -4,7 +4,7 @@
  */
 import { initChatModel } from 'langchain';
 import { HumanMessage } from '@langchain/core/messages';
-import { getAgentEnv, createModel, createLogger } from './_shared';
+import { createModel, createLogger, enforceDailyQuota, recordTokenUsage, resolveModelEnv } from './_shared';
 
 type Model = Awaited<ReturnType<typeof initChatModel>>;
 
@@ -47,8 +47,10 @@ export async function onRequest(context: any) {
     }
 
     try {
-        const envVars = getAgentEnv(env);
-        const modelInstance = await createModel(envVars, { timeout: 60_000 });
+        const modelConfig = await resolveModelEnv(context);
+        const quotaResponse = await enforceDailyQuota(context, modelConfig);
+        if (quotaResponse) return quotaResponse;
+        const modelInstance = await createModel(modelConfig.env, { timeout: 60_000 });
 
         const userMessage = [
             `Topic: "${topic}"`,
@@ -108,6 +110,7 @@ export async function onRequest(context: any) {
             input_tokens: usage.input_tokens || usage.prompt_tokens || 0,
             output_tokens: usage.output_tokens || usage.completion_tokens || 0,
         };
+        await recordTokenUsage(context, modelConfig, tokenUsage.input_tokens, tokenUsage.output_tokens);
 
         return new Response(JSON.stringify({ outline, usage: tokenUsage }), {
             status: 200,

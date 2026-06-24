@@ -1,0 +1,14 @@
+<svg width="320" height="96" viewBox="0 0 320 96" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="8" y="8" width="80" height="80" rx="18" fill="url(#bg)"/>
+  <path d="M31 26h12v35h25v11H31V26Z" fill="white"/>
+  <path d="M58 25c13 12 21 25 21 38 0 11-8 19-20 19-11 0-19-8-19-19 0-13 7-26 18-38Z" fill="white" fill-opacity=".18"/>
+  <circle cx="65" cy="54" r="12" fill="white"/>
+  <text x="112" y="62" fill="#172033" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="42" font-weight="700" letter-spacing="0">灵墨</text>
+  <defs>
+    <linearGradient id="bg" x1="20" y1="18" x2="76" y2="78" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#061C3D"/>
+      <stop offset=".56" stop-color="#47309B"/>
+      <stop offset="1" stop-color="#745EE8"/>
+    </linearGradient>
+  </defs>
+</svg>

@@ -1,5 +1,5 @@
 import { initChatModel } from 'langchain';
-import { getAgentEnv, createModel, createLogger } from './_shared';
+import { createModel, createLogger, enforceDailyQuota, recordTokenUsage, resolveModelEnv } from './_shared';
 
 type Model = Awaited<ReturnType<typeof initChatModel>>;
 
@@ -19,8 +19,10 @@ export async function onRequest(context: any) {
     try {
 
 
-        const envVars = getAgentEnv(env);
-        const modelInstance = await createModel(envVars, { timeout: 120_000 });
+        const modelConfig = await resolveModelEnv(context);
+        const quotaResponse = await enforceDailyQuota(context, modelConfig);
+        if (quotaResponse) return quotaResponse;
+        const modelInstance = await createModel(modelConfig.env, { timeout: 120_000 });
 
         const prompt = `Analyze the following content for SEO optimization. Return a JSON response with:
 - score (0-100): overall SEO score
@@ -41,6 +43,13 @@ Respond ONLY with valid JSON.`;
 
         const response = await modelInstance.invoke([{ role: 'user', content: prompt }]);
         const text = typeof response.content === 'string' ? response.content : '';
+        const usage = (response as any).usage_metadata || (response as any).response_metadata?.usage || {};
+        await recordTokenUsage(
+            context,
+            modelConfig,
+            usage.input_tokens || usage.prompt_tokens || 0,
+            usage.output_tokens || usage.completion_tokens || 0
+        );
 
         let result;
         try {

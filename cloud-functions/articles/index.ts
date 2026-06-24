@@ -10,6 +10,7 @@
  * Actions: list | save | addVersion | get | delete
  */
 import { createLogger } from '../_logger';
+import { getAuthenticatedUser, upsertProfile } from '../../lib/server/supabase-admin';
 
 const logger = createLogger('articles');
 
@@ -30,14 +31,20 @@ interface ArticleData {
     currentVersion: number;
 }
 
-const MANIFEST_CONV = 'articles-manifest';
+function manifestConversation(userId: string) {
+    return `articles-manifest-${userId}`;
+}
+
+function articleConversation(userId: string, id: string) {
+    return `article-${userId}-${id}`;
+}
 
 /**
  * Read the latest manifest record (single record; newest history wins).
  */
-async function getManifest(store: any): Promise<string[]> {
+async function getManifest(store: any, userId: string): Promise<string[]> {
     try {
-        const messages = await store.getMessages({ conversationId: MANIFEST_CONV, limit: 1, order: 'desc' });
+        const messages = await store.getMessages({ conversationId: manifestConversation(userId), limit: 1, order: 'desc' });
         if (messages.length > 0 && messages[0].content) {
             const data = typeof messages[0].content === 'string'
                 ? JSON.parse(messages[0].content)
@@ -52,9 +59,9 @@ async function getManifest(store: any): Promise<string[]> {
  * Persist a manifest snapshot by appending a new record. We never call
  * clearMessages — the latest record always represents the current state.
  */
-async function saveManifest(store: any, ids: string[]) {
+async function saveManifest(store: any, userId: string, ids: string[]) {
     await store.appendMessage({
-        conversationId: MANIFEST_CONV,
+        conversationId: manifestConversation(userId),
         role: 'system',
         content: JSON.stringify(ids),
         metadata: { type: 'manifest', ts: new Date().toISOString() },
@@ -64,9 +71,9 @@ async function saveManifest(store: any, ids: string[]) {
 /**
  * Read the latest version of an article.
  */
-async function getArticleById(store: any, id: string): Promise<ArticleData | null> {
+async function getArticleById(store: any, userId: string, id: string): Promise<ArticleData | null> {
     try {
-        const messages = await store.getMessages({ conversationId: `article-${id}`, limit: 1, order: 'desc' });
+        const messages = await store.getMessages({ conversationId: articleConversation(userId, id), limit: 1, order: 'desc' });
         if (messages.length > 0 && messages[0].content) {
             return typeof messages[0].content === 'string'
                 ? JSON.parse(messages[0].content)
@@ -81,9 +88,9 @@ async function getArticleById(store: any, id: string): Promise<ArticleData | nul
  * `articleData` should be the *new* full article state (with one more version
  * than what existed before).
  */
-async function appendArticleVersion(store: any, articleData: ArticleData) {
+async function appendArticleVersion(store: any, userId: string, articleData: ArticleData) {
     await store.appendMessage({
-        conversationId: `article-${articleData.id}`,
+        conversationId: articleConversation(userId, articleData.id),
         role: 'system',
         content: JSON.stringify(articleData),
         metadata: { type: 'article', id: articleData.id, version: articleData.versions.length - 1 },
@@ -111,6 +118,11 @@ export async function onRequestPost(context: any) {
     const body: Record<string, any> = context.request?.body ?? {};
 
     const { action } = body;
+    const authenticatedUser = await getAuthenticatedUser(context.env ?? {}, context.request);
+    if (authenticatedUser) {
+        await upsertProfile(context.env ?? {}, authenticatedUser);
+    }
+    const userId = authenticatedUser?.id ?? body.userId ?? 'default';
 
     if (!store) {
         return createResponse({
@@ -122,10 +134,10 @@ export async function onRequestPost(context: any) {
     try {
         switch (action) {
             case 'list': {
-                const ids = await getManifest(store);
+                const ids = await getManifest(store, userId);
                 const articles: ArticleData[] = [];
                 for (const id of ids) {
-                    const data = await getArticleById(store, id);
+                    const data = await getArticleById(store, userId, id);
                     if (data) articles.push(data);
                 }
                 articles.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -150,10 +162,10 @@ export async function onRequestPost(context: any) {
                     versions: [{ content: article.content, createdAt: now, wordCount }],
                     currentVersion: 0,
                 };
-                await appendArticleVersion(store, articleData);
-                const ids = await getManifest(store);
+                await appendArticleVersion(store, userId, articleData);
+                const ids = await getManifest(store, userId);
                 if (!ids.includes(id)) {
-                    await saveManifest(store, [id, ...ids]);
+                    await saveManifest(store, userId, [id, ...ids]);
                 }
                 logger.log('Saved article:', id, `(${wordCount} words)`);
                 return createResponse({ success: true, id });
@@ -164,7 +176,7 @@ export async function onRequestPost(context: any) {
                 if (!id || !newContent) {
                     return createResponse({ error: 'Missing id or content' }, 400);
                 }
-                const existing = await getArticleById(store, id);
+                const existing = await getArticleById(store, userId, id);
                 if (!existing) {
                     return createResponse({ error: 'Article not found' }, 404);
                 }
@@ -175,7 +187,7 @@ export async function onRequestPost(context: any) {
                 existing.wordCount = wordCount;
                 const firstLine = newContent.split('\n').find((l: string) => l.trim()) || 'Untitled';
                 existing.title = firstLine.replace(/^#+\s*/, '').slice(0, 100);
-                await appendArticleVersion(store, existing);
+                await appendArticleVersion(store, userId, existing);
                 logger.log('Added version:', id, `v${existing.versions.length} (${wordCount} words)`);
                 return createResponse({ success: true, id, versionCount: existing.versions.length });
             }
@@ -183,7 +195,7 @@ export async function onRequestPost(context: any) {
             case 'get': {
                 const { id } = body;
                 if (!id) return createResponse({ error: 'Missing id' }, 400);
-                const data = await getArticleById(store, id);
+                const data = await getArticleById(store, userId, id);
                 if (!data) return createResponse({ error: 'Article not found' }, 404);
                 return createResponse({ article: data });
             }
@@ -191,9 +203,9 @@ export async function onRequestPost(context: any) {
             case 'delete': {
                 const { id } = body;
                 if (!id) return createResponse({ error: 'Missing id' }, 400);
-                try { await store.clearMessages({ conversationId: `article-${id}` }); } catch {}
-                const ids = await getManifest(store);
-                await saveManifest(store, ids.filter((i: string) => i !== id));
+                try { await store.clearMessages({ conversationId: articleConversation(userId, id) }); } catch {}
+                const ids = await getManifest(store, userId);
+                await saveManifest(store, userId, ids.filter((i: string) => i !== id));
                 logger.log('Deleted article:', id);
                 return createResponse({ success: true });
             }

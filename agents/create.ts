@@ -4,7 +4,16 @@
  */
 import { initChatModel, tool } from 'langchain';
 import { HumanMessage, AIMessage, ToolMessage as LCToolMessage } from '@langchain/core/messages';
-import { getAgentEnv, createModel, createLogger, sseEvent, createSSEResponse } from './_shared';
+import {
+    createModel,
+    createLogger,
+    enforceDailyQuota,
+    recordTokenUsage,
+    resolveModelEnv,
+    sseEvent,
+    createSSEResponse,
+    type ModelResolution,
+} from './_shared';
 
 type Model = Awaited<ReturnType<typeof initChatModel>>;
 
@@ -142,7 +151,15 @@ function buildSystemPrompt(memory: UserMemory | null, articleLength: string): st
 // ============================================================
 // Core Stream
 // ============================================================
-async function* generateStream(modelInstance: Model, userMessage: string, systemPrompt: string, contextTools: any, signal?: AbortSignal): AsyncGenerator<string> {
+async function* generateStream(
+    context: any,
+    modelConfig: ModelResolution,
+    modelInstance: Model,
+    userMessage: string,
+    systemPrompt: string,
+    contextTools: any,
+    signal?: AbortSignal
+): AsyncGenerator<string> {
     let totalInputTokens = 0;
     let totalOutputTokens = 0;
 
@@ -260,6 +277,9 @@ async function* generateStream(modelInstance: Model, userMessage: string, system
     }
 
     logger.log(`Tokens — input: ${totalInputTokens}, output: ${totalOutputTokens}`);
+    await recordTokenUsage(context, modelConfig, totalInputTokens, totalOutputTokens).catch((error) => {
+        logger.error('Failed to record token usage:', (error as Error).message);
+    });
     yield sseEvent({ type: 'usage', input_tokens: totalInputTokens, output_tokens: totalOutputTokens, total_tokens: totalInputTokens + totalOutputTokens });
 }
 
@@ -295,8 +315,12 @@ export async function onRequest(context: any) {
     const systemPrompt = buildSystemPrompt(memory, length);
 
     let modelInstance: Model;
+    let modelConfig: ModelResolution;
     try {
-        modelInstance = await createModel(getAgentEnv(env));
+        modelConfig = await resolveModelEnv(context);
+        const quotaResponse = await enforceDailyQuota(context, modelConfig);
+        if (quotaResponse) return quotaResponse;
+        modelInstance = await createModel(modelConfig.env);
     } catch (e) {
         return new Response(JSON.stringify({ error: (e as Error).message }), {
             status: 500, headers: { 'Content-Type': 'application/json; charset=UTF-8' },
@@ -304,7 +328,7 @@ export async function onRequest(context: any) {
     }
 
     const generator = (s?: AbortSignal) => {
-        const g = generateStream(modelInstance, userMessage, systemPrompt, contextTools, s);
+        const g = generateStream(context, modelConfig, modelInstance, userMessage, systemPrompt, contextTools, s);
         // wrap: append [DONE] and fire-and-forget recordUsage
         return (async function* () {
             try {

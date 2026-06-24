@@ -12,7 +12,7 @@ export function Progress({ value, max = 100, className, indicatorClassName }: Pr
   const percentage = Math.min(100, Math.max(0, (value / max) * 100));
 
   return (
-    <div className={cn('h-2 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800', className)}>
+    <div className={cn('h-2 w-full overflow-hidden rounded-full bg-white/70 shadow-inner dark:bg-white/10', className)}>
       <div
         className={cn('h-full rounded-full bg-brand-500 transition-all duration-500', indicatorClassName)}
         style={{ width: `${percentage}%` }}
@@ -63,7 +63,7 @@ export function CircularProgress({ value, size = 120, strokeWidth = 8, className
           style={{ stroke: 'currentColor' }}
         />
       </svg>
-      <span className="absolute text-2xl font-bold text-gray-900 dark:text-gray-100">
+      <span className="absolute text-2xl font-bold text-slate-900 dark:text-slate-100">
         {value}
       </span>
     </div>

@@ -27,7 +27,7 @@ export function Input({ className, label, id, suggestion, suggestionHint, onAcce
   return (
     <div className="space-y-1.5">
       {label && (
-        <label htmlFor={id} className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+        <label htmlFor={id} className="block text-sm font-medium text-slate-700 dark:text-slate-300">
           {label}
         </label>
       )}
@@ -36,7 +36,7 @@ export function Input({ className, label, id, suggestion, suggestionHint, onAcce
           ref={inputRef}
           id={id}
           className={cn(
-            'flex h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500',
+            'flex h-10 w-full rounded-lg border border-white/80 bg-white/70 px-3 py-2 text-sm text-slate-800 shadow-[inset_0_1px_2px_rgba(15,23,42,0.06)] placeholder:text-slate-400 focus:border-brand-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-white/10 dark:bg-slate-950/40 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-brand-700 dark:focus:bg-slate-950/60',
             className
           )}
           onKeyDown={handleKeyDown}
@@ -47,13 +47,13 @@ export function Input({ className, label, id, suggestion, suggestionHint, onAcce
         {showSuggestion && (
           <>
             <div className="pointer-events-none absolute inset-0 flex items-center px-3">
-              <span className="text-sm text-gray-300 dark:text-gray-600 truncate">
+              <span className="truncate text-sm text-slate-300 dark:text-slate-600">
                 {suggestion}
               </span>
             </div>
             {suggestionHint && (
               <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
-                <span className="inline-flex items-center gap-1 rounded bg-brand-50 dark:bg-brand-900/30 px-1.5 py-0.5 text-[10px] font-medium text-brand-600 dark:text-brand-400 border border-brand-200 dark:border-brand-800">
+                <span className="inline-flex items-center gap-1 rounded border border-brand-200 bg-brand-50 px-1.5 py-0.5 text-[10px] font-medium text-brand-600 dark:border-brand-800 dark:bg-brand-900/30 dark:text-brand-400">
                   <kbd className="font-mono text-[9px] bg-white dark:bg-gray-800 rounded px-0.5 border border-gray-200 dark:border-gray-700">Tab</kbd>
                   {suggestionHint}
                 </span>

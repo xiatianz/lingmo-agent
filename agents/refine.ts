@@ -11,7 +11,16 @@
  */
 import { initChatModel } from 'langchain';
 import { HumanMessage } from '@langchain/core/messages';
-import { getAgentEnv, createModel, createLogger, sseEvent, createSSEResponse } from './_shared';
+import {
+    createModel,
+    createLogger,
+    enforceDailyQuota,
+    recordTokenUsage,
+    resolveModelEnv,
+    sseEvent,
+    createSSEResponse,
+    type ModelResolution,
+} from './_shared';
 
 type Model = Awaited<ReturnType<typeof initChatModel>>;
 
@@ -32,7 +41,14 @@ RULES:
 - Return ONLY the modified section content (including the heading)
 - Do NOT output the full article`;
 
-async function* eventStream(modelInstance: Model, systemPrompt: string, userMessage: string, signal?: AbortSignal): AsyncGenerator<string> {
+async function* eventStream(
+    context: any,
+    modelConfig: ModelResolution,
+    modelInstance: Model,
+    systemPrompt: string,
+    userMessage: string,
+    signal?: AbortSignal
+): AsyncGenerator<string> {
     let totalInputTokens = 0;
     let totalOutputTokens = 0;
     const MAX_RETRIES = 3;
@@ -89,6 +105,9 @@ async function* eventStream(modelInstance: Model, systemPrompt: string, userMess
             yield sseEvent({ type: 'error_message', content: `Error: ${error.message}` });
         }
     }
+    await recordTokenUsage(context, modelConfig, totalInputTokens, totalOutputTokens).catch((error) => {
+        logger.error('Failed to record token usage:', (error as Error).message);
+    });
     yield sseEvent({ type: 'usage', input_tokens: totalInputTokens, output_tokens: totalOutputTokens, total_tokens: totalInputTokens + totalOutputTokens });
     yield "data: [DONE]\n\n";
 }
@@ -118,9 +137,12 @@ export async function onRequest(context: any) {
     const signal = request?.signal as AbortSignal | undefined;
 
     let modelInstance: Model;
+    let modelConfig: ModelResolution;
     try {
-        const envVars = getAgentEnv(env);
-        modelInstance = await createModel(envVars);
+        modelConfig = await resolveModelEnv(context);
+        const quotaResponse = await enforceDailyQuota(context, modelConfig);
+        if (quotaResponse) return quotaResponse;
+        modelInstance = await createModel(modelConfig.env);
     } catch (e) {
         const msg = (e as Error).message;
         logger.error(msg);
@@ -129,6 +151,6 @@ export async function onRequest(context: any) {
         });
     }
 
-    const generator = (s?: AbortSignal) => eventStream(modelInstance, systemPrompt, userMessage, s);
+    const generator = (s?: AbortSignal) => eventStream(context, modelConfig, modelInstance, systemPrompt, userMessage, s);
     return createSSEResponse(generator, signal);
 }

@@ -114,8 +114,8 @@ export function ArticleStats({ content }: ArticleStatsProps) {
     return (
       <Card>
         <CardHeader>
-          <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-            <svg className="h-4 w-4 text-brand-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
+            <svg className="h-4 w-4 text-brand-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
             </svg>
             {t.articleStats}
@@ -123,12 +123,12 @@ export function ArticleStats({ content }: ArticleStatsProps) {
         </CardHeader>
         <CardContent>
           <div className="py-8 text-center">
-            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-gray-100 dark:bg-gray-800">
-              <svg className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-brand-50 text-brand-500 shadow-inner dark:bg-brand-900/30 dark:text-brand-300">
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
               </svg>
             </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400">{t.statsEmpty || t.seoEmpty}</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{t.statsEmpty || t.seoEmpty}</p>
           </div>
         </CardContent>
       </Card>
@@ -139,8 +139,8 @@ export function ArticleStats({ content }: ArticleStatsProps) {
     <Card>
       {/* Stats Section */}
       <CardHeader>
-        <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-          <svg className="h-4 w-4 text-brand-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
+          <svg className="h-4 w-4 text-brand-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
           </svg>
           {t.articleStats}
@@ -193,9 +193,9 @@ export function ArticleStats({ content }: ArticleStatsProps) {
 
 function StatRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between text-sm">
-      <span className="text-gray-500 dark:text-gray-400">{label}</span>
-      <span className="font-medium text-gray-900 dark:text-gray-100">{value}</span>
+    <div className="flex items-center justify-between rounded-lg bg-white/50 px-3 py-2 text-sm shadow-sm dark:bg-white/5">
+      <span className="text-slate-500 dark:text-slate-400">{label}</span>
+      <span className="font-semibold text-slate-900 dark:text-slate-100">{value}</span>
     </div>
   );
 }

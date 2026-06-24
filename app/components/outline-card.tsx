@@ -80,20 +80,20 @@ export function OutlineCard({
   };
 
   return (
-    <div className="rounded-xl border border-brand-200 dark:border-brand-800 bg-white dark:bg-gray-900 shadow-sm overflow-hidden flex flex-col" style={{ maxHeight: 'calc(100vh - 120px)' }}>
+    <div className="flex flex-col overflow-hidden rounded-lg border border-brand-200/70 bg-white/80 shadow-[0_18px_45px_rgba(31,41,55,0.08)] backdrop-blur-xl dark:border-brand-800/50 dark:bg-slate-900/70" style={{ maxHeight: 'calc(100vh - 120px)' }}>
       {/* Sticky top action bar */}
-      <div className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-gray-100 dark:border-gray-800 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm px-5 py-3">
+      <div className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-slate-200/70 bg-white/75 px-5 py-3 backdrop-blur dark:border-white/10 dark:bg-slate-900/70">
         <div className="flex items-center gap-2 min-w-0">
           <svg className="h-4 w-4 text-brand-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
           </svg>
-          <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
+          <span className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
             {(t as any).outlineReady ?? "大纲已生成，请确认或调整"}
           </span>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <button
-            className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors px-2 py-1"
+            className="px-2 py-1 text-xs text-slate-400 transition-colors hover:text-slate-600 dark:hover:text-slate-300"
             disabled={isLoading}
             onClick={onDismiss}
           >
@@ -129,7 +129,7 @@ export function OutlineCard({
         {editingTitle ? (
           <input
             autoFocus
-            className="w-full rounded-lg border border-brand-300 dark:border-brand-700 bg-white dark:bg-gray-900 px-3 py-1.5 text-base font-semibold text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-500"
+            className="w-full rounded-lg border border-brand-300 bg-white/75 px-3 py-1.5 text-base font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 dark:border-brand-700 dark:bg-slate-950/40 dark:text-slate-100"
             value={editedOutline.title}
             onChange={(e) => setEditedOutline((prev) => ({ ...prev, title: e.target.value }))}
             onBlur={() => setEditingTitle(false)}
@@ -140,7 +140,7 @@ export function OutlineCard({
             className="group w-full text-left"
             onClick={() => setEditingTitle(true)}
           >
-            <p className="text-base font-semibold text-gray-900 dark:text-gray-100 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
+            <p className="text-base font-semibold text-slate-900 transition-colors group-hover:text-brand-600 dark:text-slate-100 dark:group-hover:text-brand-400">
               {editedOutline.title}
               <span className="ml-2 opacity-0 group-hover:opacity-100 text-xs font-normal text-gray-400">✎</span>
             </p>
@@ -149,11 +149,11 @@ export function OutlineCard({
 
         {/* Summary & tone */}
         <div className="flex items-start gap-2">
-          <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed flex-1">
+          <p className="flex-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
             {editedOutline.summary}
           </p>
           {editedOutline.tone && (
-            <span className="shrink-0 rounded-full bg-brand-50 dark:bg-brand-900/30 px-2 py-0.5 text-xs text-brand-600 dark:text-brand-400 border border-brand-200 dark:border-brand-800">
+            <span className="shrink-0 rounded-full border border-brand-200 bg-brand-50 px-2 py-0.5 text-xs text-brand-600 dark:border-brand-800 dark:bg-brand-900/30 dark:text-brand-400">
               {editedOutline.tone}
             </span>
           )}
@@ -162,11 +162,11 @@ export function OutlineCard({
         {/* Sections */}
         <ol className="space-y-3">
           {editedOutline.sections.map((section, si) => (
-            <li key={si} className="rounded-lg border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50 p-3 space-y-2">
+            <li key={si} className="space-y-2 rounded-lg border border-white/70 bg-white/50 p-3 shadow-sm dark:border-white/10 dark:bg-white/5">
               {editingTitleIndex === si ? (
                 <input
                   autoFocus
-                  className="w-full rounded border border-brand-300 dark:border-brand-700 bg-white dark:bg-gray-900 px-2 py-1 text-sm font-medium text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  className="w-full rounded border border-brand-300 bg-white/75 px-2 py-1 text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 dark:border-brand-700 dark:bg-slate-950/40 dark:text-slate-100"
                   value={section.heading}
                   onChange={(e) => updateSectionHeading(si, e.target.value)}
                   onBlur={() => setEditingTitleIndex(null)}
@@ -180,7 +180,7 @@ export function OutlineCard({
                   <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-100 dark:bg-brand-900/50 text-xs font-semibold text-brand-600 dark:text-brand-400">
                     {si + 1}
                   </span>
-                  <span className="text-sm font-medium text-gray-800 dark:text-gray-200 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
+                  <span className="text-sm font-medium text-slate-800 transition-colors group-hover:text-brand-600 dark:text-slate-200 dark:group-hover:text-brand-400">
                     {section.heading}
                     <span className="ml-1.5 opacity-0 group-hover:opacity-100 text-xs font-normal text-gray-400">✎</span>
                   </span>
@@ -192,7 +192,7 @@ export function OutlineCard({
                   <li key={pi} className="flex items-center gap-1.5">
                     <span className="shrink-0 h-1 w-1 rounded-full bg-brand-400 dark:bg-brand-500 mt-0.5" />
                     <input
-                      className="flex-1 bg-transparent text-xs text-gray-600 dark:text-gray-400 focus:outline-none focus:text-gray-900 dark:focus:text-gray-100 placeholder:text-gray-300 dark:placeholder:text-gray-600"
+                      className="flex-1 bg-transparent text-xs text-slate-600 placeholder:text-slate-300 focus:text-slate-900 focus:outline-none dark:text-slate-400 dark:placeholder:text-slate-600 dark:focus:text-slate-100"
                       value={point}
                       placeholder="输入要点..."
                       onChange={(e) => updateKeyPoint(si, pi, e.target.value)}
@@ -219,7 +219,7 @@ export function OutlineCard({
               </ul>
 
               {section.estimatedWords && (
-                <p className="ml-7 text-xs text-gray-400 dark:text-gray-600">
+                <p className="ml-7 text-xs text-slate-400 dark:text-slate-600">
                   ~{section.estimatedWords} 字
                 </p>
               )}
@@ -228,7 +228,7 @@ export function OutlineCard({
         </ol>
 
         {editedOutline.estimatedTotalWords && (
-          <p className="text-right text-xs text-gray-400 dark:text-gray-500">
+          <p className="text-right text-xs text-slate-400 dark:text-slate-500">
             {(t as any).estimatedWords ?? "预计总字数"}：~{editedOutline.estimatedTotalWords} 字
           </p>
         )}

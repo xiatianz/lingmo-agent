@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
+import { getSupabaseAuthHeader } from "@/lib/supabase/client";
 import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
@@ -50,11 +51,12 @@ export function TopicForm({ onGenerate, onStop, isGenerating, preferences }: Top
     setIsLoadingKeywords(true);
     setSuggestedKeywords("");
 
-    fetch('/suggest-keywords', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'makers-conversation-id': conversationId },
-      body: JSON.stringify({ topic: trimmed }),
-    })
+    getSupabaseAuthHeader()
+      .then((authHeader) => fetch('/suggest-keywords', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'makers-conversation-id': conversationId, ...authHeader },
+        body: JSON.stringify({ topic: trimmed }),
+      }))
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (data?.keywords) setSuggestedKeywords(data.keywords);
@@ -84,15 +86,15 @@ export function TopicForm({ onGenerate, onStop, isGenerating, preferences }: Top
   return (
     <Card>
       <CardHeader>
-        <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-          <svg className="h-4 w-4 text-brand-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
+          <svg className="h-4 w-4 text-brand-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
           </svg>
           {t.newArticle}
         </h2>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-3">
           <Input
             id="topic"
             label={t.topic}
@@ -122,7 +124,7 @@ export function TopicForm({ onGenerate, onStop, isGenerating, preferences }: Top
                 <span className="h-1 w-1 rounded-full bg-brand-400 animate-bounce [animation-delay:150ms]" />
                 <span className="h-1 w-1 rounded-full bg-brand-400 animate-bounce [animation-delay:300ms]" />
               </div>
-              <span className="text-[10px] text-gray-400">{(t as any).suggestingKeywords}</span>
+              <span className="text-[10px] text-slate-400">{(t as any).suggestingKeywords}</span>
             </div>
           )}
 
@@ -133,7 +135,7 @@ export function TopicForm({ onGenerate, onStop, isGenerating, preferences }: Top
                   key={i}
                   type="button"
                   onClick={() => setKeywords(prev => prev ? `${prev}, ${kw}` : kw)}
-                  className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 hover:bg-brand-50 hover:text-brand-600 transition-colors dark:bg-gray-800 dark:text-gray-400"
+                  className="rounded-full bg-white/70 px-1.5 py-0.5 text-[10px] text-slate-500 shadow-sm transition-colors hover:bg-brand-50 hover:text-brand-600 dark:bg-white/10 dark:text-slate-400"
                 >
                   {kw}
                 </button>
@@ -141,38 +143,40 @@ export function TopicForm({ onGenerate, onStop, isGenerating, preferences }: Top
             </div>
           )}
 
-          <Select
-            id="style"
-            label={t.style}
-            value={style}
-            onChange={(e) => setStyle(e.target.value)}
-            disabled={isGenerating}
-            options={[
-              { value: "informative", label: t.styleOptions.informative },
-              { value: "persuasive", label: t.styleOptions.persuasive },
-              { value: "technical", label: t.styleOptions.technical },
-              { value: "casual", label: t.styleOptions.casual },
-            ]}
-          />
+          <div className="grid grid-cols-2 gap-3">
+            <Select
+              id="style"
+              label={t.style}
+              value={style}
+              onChange={(e) => setStyle(e.target.value)}
+              disabled={isGenerating}
+              options={[
+                { value: "informative", label: t.styleOptions.informative },
+                { value: "persuasive", label: t.styleOptions.persuasive },
+                { value: "technical", label: t.styleOptions.technical },
+                { value: "casual", label: t.styleOptions.casual },
+              ]}
+            />
 
-          <Select
-            id="length"
-            label={t.length}
-            value={length}
-            onChange={(e) => setLength(e.target.value)}
-            disabled={isGenerating}
-            options={[
-              { value: "short", label: t.lengthOptions.short },
-              { value: "medium", label: t.lengthOptions.medium },
-              { value: "long", label: t.lengthOptions.long },
-            ]}
-          />
+            <Select
+              id="length"
+              label={t.length}
+              value={length}
+              onChange={(e) => setLength(e.target.value)}
+              disabled={isGenerating}
+              options={[
+                { value: "short", label: t.lengthOptions.short },
+                { value: "medium", label: t.lengthOptions.medium },
+                { value: "long", label: t.lengthOptions.long },
+              ]}
+            />
+          </div>
 
           <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
               {(t as any).agentMode || '生成模式'}
             </label>
-            <div className="flex rounded-lg border border-gray-200 dark:border-gray-700 p-0.5">
+            <div className="flex rounded-lg border border-white/80 bg-white/60 p-0.5 shadow-inner dark:border-white/10 dark:bg-slate-950/30">
               <button
                 type="button"
                 onClick={() => setMode("lite")}
@@ -180,8 +184,8 @@ export function TopicForm({ onGenerate, onStop, isGenerating, preferences }: Top
                 className={cn(
                   "flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-colors",
                   mode === "lite"
-                    ? "bg-brand-600 text-white shadow-sm"
-                    : "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
+                    ? "bg-gradient-to-r from-brand-900 via-brand-700 to-brand-500 text-white shadow-sm"
+                    : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
                 )}
               >
                 {(t as any).modeLite || '轻量'}
@@ -193,14 +197,14 @@ export function TopicForm({ onGenerate, onStop, isGenerating, preferences }: Top
                 className={cn(
                   "flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-colors",
                   mode === "deepagent"
-                    ? "bg-brand-600 text-white shadow-sm"
-                    : "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
+                    ? "bg-gradient-to-r from-brand-900 via-brand-700 to-brand-500 text-white shadow-sm"
+                    : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
                 )}
               >
                 {(t as any).modeDeepAgent || 'DeepAgent'}
               </button>
             </div>
-            <p className="text-[10px] text-gray-400 dark:text-gray-500">
+            <p className="text-[10px] text-slate-500 dark:text-slate-500">
               {mode === "lite"
                 ? ((t as any).modeLiteDesc || '低 Token 消耗，快速生成')
                 : ((t as any).modeDeepAgentDesc || '完整 Agent 框架，功能更丰富')}

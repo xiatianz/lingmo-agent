@@ -47,7 +47,7 @@ export function ProcessSteps({ steps, stepTokens = {} }: ProcessStepsProps) {
   return (
     <Card>
       <CardHeader>
-        <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+        <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
           <svg className="h-4 w-4 text-brand-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
           </svg>
@@ -58,57 +58,46 @@ export function ProcessSteps({ steps, stepTokens = {} }: ProcessStepsProps) {
         <div className="space-y-1">
           {(Object.keys(STEP_ICONS) as Step[]).map((key, index) => {
             const status = steps[key];
-            const isLast = index === Object.keys(STEP_ICONS).length - 1;
             const tokenKey = STEP_TOKEN_KEY[key];
             const tokens = tokenKey ? stepTokens[tokenKey] : undefined;
 
             return (
-              <div key={key} className="flex items-start gap-3">
-                <div className="flex flex-col items-center">
-                  <div
-                    className={cn(
-                      "flex h-7 w-7 items-center justify-center rounded-full border-2 transition-all duration-300",
-                      {
-                        "border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900": status === "pending",
-                        "border-brand-500 bg-brand-50 dark:bg-brand-900/30": status === "active",
-                        "border-green-500 bg-green-50 dark:bg-green-900/30": status === "done",
-                      }
-                    )}
-                  >
-                    {status === "done" ? (
-                      <svg className="h-3.5 w-3.5 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
-                    ) : status === "active" ? (
-                      <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-brand-500" />
-                    ) : (
-                      <svg className="h-3.5 w-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d={STEP_ICONS[key]} />
-                      </svg>
-                    )}
-                  </div>
-                  {!isLast && (
-                    <div
-                      className={cn("w-0.5 h-5 transition-colors duration-300", {
-                        "bg-gray-200 dark:bg-gray-700": status !== "done",
-                        "bg-green-300 dark:bg-green-700": status === "done",
-                      })}
-                    />
+              <div key={key} className="flex items-center gap-2 rounded-lg px-1 py-0.5">
+                <div
+                  className={cn(
+                    "flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full border transition-all duration-300",
+                    {
+                      "border-slate-200 bg-white/70 dark:border-white/10 dark:bg-white/5": status === "pending",
+                      "border-brand-400 bg-brand-50 text-brand-600 shadow-sm dark:border-brand-700 dark:bg-brand-900/30": status === "active",
+                      "border-emerald-400 bg-emerald-50 text-emerald-600 shadow-sm dark:border-emerald-700 dark:bg-emerald-900/30": status === "done",
+                    }
+                  )}
+                >
+                  {status === "done" ? (
+                    <svg className="h-3 w-3 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  ) : status === "active" ? (
+                    <span className="h-2 w-2 animate-pulse rounded-full bg-brand-500" />
+                  ) : (
+                    <svg className="h-3 w-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d={STEP_ICONS[key]} />
+                    </svg>
                   )}
                 </div>
 
                 <div className="flex items-center justify-between flex-1 min-w-0">
                   <span
-                    className={cn("mt-1 text-sm transition-colors duration-300", {
-                      "text-gray-400 dark:text-gray-500": status === "pending",
+                    className={cn("text-sm transition-colors duration-300", {
+                      "text-slate-400 dark:text-slate-500": status === "pending",
                       "text-brand-600 dark:text-brand-400 font-medium": status === "active",
-                      "text-gray-700 dark:text-gray-300": status === "done",
+                      "text-slate-700 dark:text-slate-300": status === "done",
                     })}
                   >
                     {stepLabels[key]}
                   </span>
                   {status === "done" && tokens && tokens > 0 && (
-                    <span className="mt-1 inline-flex items-center rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+                    <span className="inline-flex items-center rounded-md bg-white/70 px-1.5 py-0.5 text-[10px] font-medium text-slate-600 shadow-sm dark:bg-white/10 dark:text-slate-400">
                       {formatTokens(tokens)}
                     </span>
                   )}

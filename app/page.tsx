@@ -11,9 +11,11 @@ import { ArticleHistory } from "./components/article-history";
 import { ExportPanel } from "./components/export-panel";
 import { SeoPanel } from "./components/seo-panel";
 import { OutlineCard } from "./components/outline-card";
-import { DeployButtons } from "./components/deploy-buttons";
 import { LanguageToggle } from "@/components/ui/language-toggle";
 import { TokenUsage } from "@/components/ui/token-usage";
+import { BrandMark } from "@/components/ui/brand-mark";
+import { AuthControls } from "./components/auth-controls";
+import { getSupabaseAuthHeader } from "@/lib/supabase/client";
 import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
@@ -44,7 +46,7 @@ export default function Home() {
 }
 
 function HomeInner() {
-  const { t, locale } = useI18n();
+  const { t } = useI18n();
   const conversationId = useConversationId();
   const [content, setContent] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -88,11 +90,12 @@ function HomeInner() {
 
   // Load preferences on mount
   useEffect(() => {
-    fetch('/preferences', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'get', userId: 'default' }),
-    })
+    getSupabaseAuthHeader()
+      .then((authHeader) => fetch('/preferences', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeader },
+        body: JSON.stringify({ action: 'get', userId: 'default' }),
+      }))
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (data?.preferences) {
@@ -141,9 +144,10 @@ function HomeInner() {
       updateStep("research", "active");
 
       try {
+        const authHeader = await getSupabaseAuthHeader();
         const res = await fetch('/outline', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'makers-conversation-id': conversationId },
+          headers: { 'Content-Type': 'application/json', 'makers-conversation-id': conversationId, ...authHeader },
           body: JSON.stringify(params),
         });
 
@@ -228,9 +232,10 @@ function HomeInner() {
       setAbortController(controller);
 
       try {
+        const authHeader = await getSupabaseAuthHeader();
         const response = await fetch(endpoint, {
           method: "POST",
-          headers: { "Content-Type": "application/json", "makers-conversation-id": conversationId },
+          headers: { "Content-Type": "application/json", "makers-conversation-id": conversationId, ...authHeader },
           body: JSON.stringify({
             topic: params.topic,
             keywords: params.keywords,
@@ -358,9 +363,9 @@ function HomeInner() {
         setTimeout(() => editorScrollRef.current?.scrollToTop(), 100);
 
         // Record usage to preferences
-        fetch('/preferences', {
+        getSupabaseAuthHeader().then((authHeader) => fetch('/preferences', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...authHeader },
           body: JSON.stringify({
             action: 'recordUsage',
             userId: 'default',
@@ -369,7 +374,7 @@ function HomeInner() {
             style: params.style,
             length: params.length,
           }),
-        }).then(r => r.ok ? r.json() : null).then(data => {
+        })).then(r => r.ok ? r.json() : null).then(data => {
           if (data?.preferences) setPreferences(data.preferences);
         }).catch(() => {});
       } catch (err) {
@@ -472,7 +477,7 @@ function HomeInner() {
   }, []);
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen text-slate-900 dark:text-slate-100">
       {/* Toast notification (top-right) */}
       {toastMessage && (
         <div className="fixed top-4 right-4 z-[100] animate-in slide-in-from-top-2 fade-in duration-300">
@@ -519,30 +524,23 @@ function HomeInner() {
         </div>
       )}
       {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-gray-200 bg-white/80 backdrop-blur-sm dark:border-gray-800 dark:bg-gray-950/80">
+      <header className="sticky top-0 z-50 border-b border-white/70 bg-white/70 shadow-[0_12px_35px_rgba(15,23,42,0.08)] backdrop-blur-2xl dark:border-white/10 dark:bg-slate-950/60 dark:shadow-[0_12px_35px_rgba(0,0,0,0.25)]">
         <div className="mx-auto flex h-14 max-w-[1600px] items-center justify-between px-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600 text-white">
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-              </svg>
+            <BrandMark className="h-9 w-9" />
+            <div className="min-w-0">
+              <h1 className="text-lg font-semibold leading-5 tracking-normal text-slate-950 dark:text-slate-50">
+                {t.title}
+              </h1>
+              <p className="mt-0.5 text-[11px] font-medium leading-3 text-brand-700 dark:text-brand-300">
+                {(t as any).subtitle}
+              </p>
             </div>
-            <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-              {t.title}
-            </h1>
           </div>
           <div className="flex items-center gap-3">
-            <DeployButtons
-              templateSlug="content-creator-agent"
-              githubUrl="https://github.com/edgeone-pages-test/content-creator-agent"
-              lang={locale}
-            />
             <TokenUsage inputTokens={tokenUsage.input} outputTokens={tokenUsage.output} />
+            <AuthControls />
             <LanguageToggle />
-            <div className="flex items-center gap-2 text-sm text-gray-500">
-              <span className="inline-flex h-2 w-2 rounded-full bg-green-500" />
-              {t.poweredBy}
-            </div>
           </div>
         </div>
       </header>
@@ -570,16 +568,16 @@ function HomeInner() {
           </div>
         </div>
       )}
-      <div className="mx-auto max-w-[1600px] px-4 py-6">
-        <div className="flex flex-col lg:flex-row gap-6">
+      <div className="mx-auto box-border max-w-[1600px] px-4 py-3 lg:h-[calc(100vh-3.5rem)] lg:overflow-hidden">
+        <div className="flex flex-col gap-4 lg:h-full lg:flex-row">
           {/* Left sidebar */}
-          <aside className="w-full lg:w-[280px] flex-shrink-0 space-y-4">
+          <aside className="w-full flex-shrink-0 space-y-2 lg:h-full lg:w-[280px] lg:pr-1">
             <TopicForm onGenerate={handleGenerate} onStop={handleStop} isGenerating={isGenerating || isGeneratingOutline} preferences={preferences} />
             <ProcessSteps steps={steps} stepTokens={stepTokens} />
           </aside>
 
           {/* Main content */}
-          <main className="flex-1 min-w-0 space-y-4">
+          <main className="flex-1 min-w-0 space-y-3 lg:flex lg:h-full lg:min-h-0 lg:flex-col lg:overflow-hidden">
             {/* Outline confirmation */}
             {outline && !isGenerating && (
               <OutlineCard
@@ -621,20 +619,22 @@ function HomeInner() {
               </>
             )}
             {/* Article History - visible below the editor */}
-            <ArticleHistory
-              onLoadArticle={handleLoadArticle}
-              currentContent={content}
-              currentKeywords={keywords}
-              currentStyle={style}
-              shouldAutoSave={shouldAutoSave}
-              onAutoSaved={handleAutoSaved}
-              currentArticleId={currentArticleId}
-              onSaveError={handleSaveError}
-            />
+            <div className="lg:flex-shrink-0">
+              <ArticleHistory
+                onLoadArticle={handleLoadArticle}
+                currentContent={content}
+                currentKeywords={keywords}
+                currentStyle={style}
+                shouldAutoSave={shouldAutoSave}
+                onAutoSaved={handleAutoSaved}
+                currentArticleId={currentArticleId}
+                onSaveError={handleSaveError}
+              />
+            </div>
           </main>
 
           {/* Right sidebar */}
-          <aside className="w-full lg:w-[300px] flex-shrink-0 space-y-4">
+          <aside className="w-full flex-shrink-0 space-y-3 lg:h-full lg:w-[300px] lg:overflow-y-auto lg:pl-1">
             <ArticleStats content={content} />
             <SeoPanel content={content} keywords={keywords} />
           </aside>

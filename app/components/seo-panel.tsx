@@ -75,7 +75,7 @@ export function SeoPanel({ content, keywords }: SeoPanelProps) {
     return (
       <Card>
         <CardHeader>
-          <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
             <svg className="h-4 w-4 text-brand-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
             </svg>
@@ -84,7 +84,12 @@ export function SeoPanel({ content, keywords }: SeoPanelProps) {
         </CardHeader>
         <CardContent>
           <div className="py-6 text-center">
-            <p className="text-sm text-gray-500 dark:text-gray-400">{t.seoPanelEmpty}</p>
+            <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-lg bg-brand-50 text-brand-500 shadow-inner dark:bg-brand-900/30 dark:text-brand-300">
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+              </svg>
+            </div>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{t.seoPanelEmpty}</p>
           </div>
         </CardContent>
       </Card>
@@ -95,7 +100,7 @@ export function SeoPanel({ content, keywords }: SeoPanelProps) {
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
             <svg className="h-4 w-4 text-brand-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
             </svg>
@@ -104,7 +109,7 @@ export function SeoPanel({ content, keywords }: SeoPanelProps) {
           {seoData && (
             <button
               onClick={() => { setSeoData(null); setTimeout(analyzeSeo, 50); }}
-              className="p-1 rounded text-gray-400 hover:text-brand-500 hover:bg-brand-50 transition-colors"
+              className="rounded p-1 text-slate-400 transition-colors hover:bg-brand-50 hover:text-brand-500 dark:hover:bg-brand-900/20"
               title="Refresh"
             >
               <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -125,9 +130,9 @@ export function SeoPanel({ content, keywords }: SeoPanelProps) {
           <div className="space-y-3">
             {/* Score bar */}
             <div className="flex items-center justify-between">
-              <span className="text-xs text-gray-500">{t.seoScore}</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400">{t.seoScore}</span>
               <div className="flex items-center gap-2">
-                <div className="h-1.5 w-16 rounded-full bg-gray-200 dark:bg-gray-700">
+                <div className="h-1.5 w-16 rounded-full bg-slate-200 dark:bg-slate-700">
                   <div
                     className={cn(
                       "h-1.5 rounded-full transition-all",
@@ -148,25 +153,25 @@ export function SeoPanel({ content, keywords }: SeoPanelProps) {
             {/* Metrics */}
             <div className="space-y-2 text-xs">
               <div className="flex justify-between">
-                <span className="text-gray-500">{t.seoKeywordDensity}</span>
+                <span className="text-slate-500 dark:text-slate-400">{t.seoKeywordDensity}</span>
                 <span className="font-medium">{seoData.keywordDensity}%</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-500">{t.seoReadability}</span>
+                <span className="text-slate-500 dark:text-slate-400">{t.seoReadability}</span>
                 <span className="font-medium">{seoData.readabilityScore}/100</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-500">{t.seoHeadingStructure}</span>
+                <span className="text-slate-500 dark:text-slate-400">{t.seoHeadingStructure}</span>
                 <span className="font-medium">H1:{seoData.headingStructure.h1} H2:{seoData.headingStructure.h2} H3:{seoData.headingStructure.h3}</span>
               </div>
             </div>
 
             {/* Suggestions */}
-            <div className="border-t border-gray-100 dark:border-gray-800 pt-2">
-              <h4 className="text-xs font-medium text-gray-500 mb-1.5">{t.seoSuggestions}</h4>
+            <div className="border-t border-slate-200/70 pt-2 dark:border-white/10">
+              <h4 className="mb-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">{t.seoSuggestions}</h4>
               <ul className="space-y-1">
                 {seoData.suggestions.map((s, i) => (
-                  <li key={i} className="flex items-start gap-1.5 text-xs text-gray-600 dark:text-gray-400">
+                  <li key={i} className="flex items-start gap-1.5 text-xs text-slate-600 dark:text-slate-400">
                     <span className="text-brand-500 mt-0.5">•</span>
                     <span>{s}</span>
                   </li>

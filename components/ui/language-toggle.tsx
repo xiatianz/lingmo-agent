@@ -8,7 +8,7 @@ export function LanguageToggle() {
     <button
       onClick={() => setLocale(locale === 'zh' ? 'en' : 'zh')}
       aria-label="Toggle language"
-      className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition-colors dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+      className="inline-flex h-9 items-center rounded-lg border border-white/70 bg-white/70 px-3 text-sm font-semibold text-slate-700 shadow-sm backdrop-blur hover:bg-white dark:border-white/10 dark:bg-white/10 dark:text-slate-200 dark:hover:bg-white/20"
     >
       {locale === 'zh' ? 'EN' : '中文'}
     </button>

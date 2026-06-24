@@ -10,6 +10,7 @@
  * Actions: get | save | recordUsage
  */
 import { createLogger } from '../_logger';
+import { getAuthenticatedUser, upsertProfile } from '../../lib/server/supabase-admin';
 
 const logger = createLogger('preferences');
 
@@ -53,7 +54,12 @@ export async function onRequestPost(context: any) {
     // SOP B-37: request body comes from context.request.body (pre-parsed by runtime)
     const body: Record<string, any> = context.request?.body ?? {};
 
-    const { action, userId = 'default' } = body;
+    const { action } = body;
+    const authenticatedUser = await getAuthenticatedUser(context.env ?? {}, context.request);
+    if (authenticatedUser) {
+        await upsertProfile(context.env ?? {}, authenticatedUser);
+    }
+    const userId = authenticatedUser?.id ?? body.userId ?? 'default';
 
     if (!store) {
         const defaults = createDefaultPreferences(userId);

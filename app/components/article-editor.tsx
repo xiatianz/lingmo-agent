@@ -4,6 +4,7 @@ import { useState, useCallback, useRef, useEffect, MutableRefObject } from "reac
 import ReactMarkdown from "react-markdown";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { BrandMark } from "@/components/ui/brand-mark";
 import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { createPortal } from "react-dom";
@@ -110,17 +111,13 @@ export function ArticleEditor({
   if (!content && !isGenerating) {
     if (hasOutline) return null;
     return (
-      <Card className="flex min-h-[600px] items-center justify-center">
+      <Card className="flex min-h-[360px] items-center justify-center bg-white/75 lg:min-h-0 lg:flex-1 dark:bg-slate-900/70">
         <div className="text-center px-8">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gray-100 dark:bg-gray-800">
-            <svg className="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-            </svg>
-          </div>
-          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+          <BrandMark className="mx-auto mb-4 h-16 w-16 rounded-lg" />
+          <h3 className="mb-2 text-lg font-semibold text-slate-900 dark:text-slate-100">
             {t.readyToCreate}
           </h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm">
+          <p className="max-w-sm text-sm leading-6 text-slate-500 dark:text-slate-400">
             {t.readyToCreateDesc}
           </p>
         </div>
@@ -134,11 +131,11 @@ export function ArticleEditor({
 
   return (
     <>
-    <Card className="relative min-h-[300px]">
+    <Card className="relative flex min-h-[300px] flex-col overflow-hidden lg:min-h-0 lg:flex-1">
       {/* Loading overlay for article loading */}
       {isLoadingArticle && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/60 dark:bg-gray-900/60 backdrop-blur-sm rounded-xl">
-          <div className="flex items-center gap-2 text-sm text-gray-500">
+        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-white/60 backdrop-blur-sm dark:bg-slate-900/60">
+          <div className="flex items-center gap-2 text-sm text-slate-500">
             <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
@@ -156,7 +153,7 @@ export function ArticleEditor({
       )}
 
       {/* Toolbar */}
-      <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 px-5 py-3">
+      <div className="flex items-center justify-between border-b border-slate-200/70 bg-white/40 px-5 py-3 backdrop-blur dark:border-white/10 dark:bg-white/5">
         <div className="flex items-center gap-3">
           {isGenerating && (
             <span className="flex items-center gap-2 text-sm text-brand-600">
@@ -171,7 +168,7 @@ export function ArticleEditor({
             </span>
           )}
           {!isGenerating && !isRefining && content && (
-            <span className="text-sm text-gray-500">
+              <span className="text-sm font-medium text-slate-500 dark:text-slate-400">
               {(() => {
                 const chinese = (content.match(/[\u4e00-\u9fff]/g) || []).length;
                 const english = content.replace(/[\u4e00-\u9fff]/g, '').split(/\s+/).filter(Boolean).length;
@@ -276,7 +273,7 @@ export function ArticleEditor({
       <div
         ref={contentRef}
         data-article-content
-        className="max-h-[60vh] overflow-y-auto px-8 py-6"
+        className="min-h-0 flex-1 overflow-y-auto bg-white/40 px-8 py-6 dark:bg-slate-950/20"
       >
         <div className={cn(
           "prose-editor transition-opacity duration-300",
