@@ -148,10 +148,15 @@ async function* eventStream(
                             yield sseEvent({ type: 'tool_call', name: 'web_search' });
                             const toolObj = tools.find((t: any) => t.name === 'web_search');
                             if (toolObj) {
-                                const result = await toolObj.invoke({ query: q, maxResults: 5 });
-                                const resultStr = typeof result === 'string' ? result : JSON.stringify(result);
-                                yield sseEvent({ type: 'tool_result', name: 'web_search', content: resultStr.slice(0, 500) });
-                                searchResults.push(`Query: ${q}\n${resultStr}`);
+                                try {
+                                    const result = await toolObj.invoke({ query: q, maxResults: 5 });
+                                    const resultStr = typeof result === 'string' ? result : JSON.stringify(result);
+                                    yield sseEvent({ type: 'tool_result', name: 'web_search', content: resultStr.slice(0, 500) });
+                                    searchResults.push(`Query: ${q}\n${resultStr}`);
+                                } catch (error) {
+                                    logger.error('Search unavailable:', (error as Error).message);
+                                    yield sseEvent({ type: 'tool_result', name: 'web_search', content: '搜索暂不可用，将直接生成正文。' });
+                                }
                             }
                         }
 
@@ -188,10 +193,21 @@ async function* eventStream(
 
                     const toolObj = tools.find((t: any) => t.name === tc.name);
                     if (toolObj) {
-                        const result = await toolObj.invoke(normalizeToolArgsForInvoke(tc.args));
-                        const resultStr = typeof result === 'string' ? result : JSON.stringify(result);
-                        yield sseEvent({ type: 'tool_result', name: tc.name, content: resultStr.slice(0, 500) });
-                        messages.push(new LCToolMessage({ content: resultStr, tool_call_id: tc.id || '' }));
+                        try {
+                            const result = await toolObj.invoke(normalizeToolArgsForInvoke(tc.args));
+                            const resultStr = typeof result === 'string' ? result : JSON.stringify(result);
+                            yield sseEvent({ type: 'tool_result', name: tc.name, content: resultStr.slice(0, 500) });
+                            messages.push(new LCToolMessage({ content: resultStr, tool_call_id: tc.id || '' }));
+                        } catch (error) {
+                            logger.error('Tool unavailable:', (error as Error).message);
+                            const fallback = '搜索工具暂不可用。请不要再次调用工具，直接根据已有知识和用户给出的大纲写完整文章。';
+                            yield sseEvent({ type: 'tool_result', name: tc.name, content: fallback });
+                            messages.push(new LCToolMessage({ content: fallback, tool_call_id: tc.id || '' }));
+                        }
+                    } else {
+                        const fallback = '搜索工具未配置。请不要再次调用工具，直接根据已有知识和用户给出的大纲写完整文章。';
+                        yield sseEvent({ type: 'tool_result', name: tc.name, content: fallback });
+                        messages.push(new LCToolMessage({ content: fallback, tool_call_id: tc.id || '' }));
                     }
                 }
 

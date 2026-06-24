@@ -18,6 +18,12 @@ import { AuthControls } from "./components/auth-controls";
 import { getSupabaseAuthHeader } from "@/lib/supabase/client";
 import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import {
+  estimateWritingTokens,
+  isSearchToolName,
+  normalizeGeneratedArticle,
+  shouldFinalizeGeneratedArticle,
+} from "@/lib/generation-stream.mjs";
 
 export type StepStatus = "pending" | "active" | "done";
 export type Step = "research" | "outline" | "writing" | "review" | "refine";
@@ -230,6 +236,7 @@ function HomeInner() {
 
       const controller = new AbortController();
       setAbortController(controller);
+      setApiError(null);
 
       try {
         const authHeader = await getSupabaseAuthHeader();
@@ -265,6 +272,9 @@ function HomeInner() {
         const decoder = new TextDecoder();
         let buffer = "";
         let currentStep: Step = "research";
+        let generatedText = "";
+        let streamError = "";
+        let hasUsage = false;
 
         while (true) {
           const { done, value } = await reader.read();
@@ -287,7 +297,7 @@ function HomeInner() {
                   break;
 
                 case "tool_call":
-                  if (event.name === "search_web" || event.name === "search_topic") {
+                  if (isSearchToolName(event.name)) {
                     updateStep("research", "active");
                     currentStep = "research";
                   } else if (event.name === "create_outline") {
@@ -306,7 +316,7 @@ function HomeInner() {
                   break;
 
                 case "tool_result":
-                  if (event.name === "search_web" || event.name === "search_topic") {
+                  if (isSearchToolName(event.name)) {
                     if (event.content) {
                       setSources(event.content);
                     }
@@ -314,18 +324,22 @@ function HomeInner() {
                   break;
 
                 case "ai_response":
-                  if (currentStep === "research" && !content) {
+                  if (currentStep === "research" && !generatedText.trim()) {
                     updateStep("research", "done");
                     updateStep("outline", "done");
                     updateStep("writing", "active");
                     currentStep = "writing";
                   }
-                  setContent((prev) => prev + event.content);
+                  if (event.content) {
+                    generatedText += event.content;
+                    setContent((prev) => prev + event.content);
+                  }
                   break;
 
                 case "error_message":
                   console.error("Stream error:", event.content);
                   const errContent = event.content || "";
+                  streamError = errContent;
                   if (errContent.includes("429") || errContent.includes("quota")) {
                     setApiError(t.quotaExhausted);
                   } else {
@@ -335,6 +349,7 @@ function HomeInner() {
 
                 case "usage":
                   const writingTokens = (event.input_tokens || 0) + (event.output_tokens || 0);
+                  hasUsage = writingTokens > 0;
                   // Add to total (outline tokens + writing tokens)
                   setTokenUsage(prev => ({
                     input: prev.input + (event.input_tokens || 0),
@@ -347,15 +362,28 @@ function HomeInner() {
           }
         }
 
+        const cleanedText = normalizeGeneratedArticle(generatedText);
+
+        if (!shouldFinalizeGeneratedArticle(cleanedText)) {
+          setContent("");
+          updateStep("writing", "pending");
+          updateStep("review", "pending");
+          if (!streamError) {
+            setApiError("正文生成没有返回可显示内容，请稍后重试，或检查模型/搜索工具配置。");
+          }
+          return;
+        }
+
+        setContent(cleanedText);
+        if (!hasUsage) {
+          setStepTokens(prev => ({ ...prev, writing: estimateWritingTokens(cleanedText) }));
+        }
+
         // Mark all steps as done when stream completes
         const allSteps: Step[] = ["research", "outline", "writing", "review"];
         for (const step of allSteps) {
           updateStep(step, "done");
         }
-
-        // Strip any leaked model internal markup (DSML)
-        setContent((prev) => prev.replace(/<[｜|]*DSML[｜|]*[^>]*>[\s\S]*?<\/[｜|]*DSML[｜|]*[^>]*>/g, '').replace(/<[｜|]*DSML[\s\S]*/g, '').trim());
-
         // Trigger auto-save after generation completes (creates new article)
         setShouldAutoSave(true);
 
@@ -387,7 +415,7 @@ function HomeInner() {
         setAbortController(null);
       }
     },
-    [updateStep, resetSteps, content]
+    [updateStep, resetSteps, conversationId, t.requestFailed, t.quotaExhausted, t.generationFailed]
   );
 
   const handleStop = useCallback(() => {
@@ -569,7 +597,7 @@ function HomeInner() {
           </div>
         </div>
       )}
-      <div className="mx-auto box-border max-w-[1600px] px-4 py-3 lg:h-[calc(100vh-5.25rem)] lg:overflow-hidden">
+      <div className="mx-auto box-border max-w-[1600px] px-4 py-3 lg:h-[calc(100vh-4.75rem)] lg:overflow-hidden">
         <div className="flex flex-col gap-4 lg:h-full lg:flex-row">
           {/* Left sidebar */}
           <aside className="w-full flex-shrink-0 space-y-2 lg:h-full lg:w-[280px] lg:pr-1">
@@ -639,7 +667,7 @@ function HomeInner() {
           </aside>
         </div>
       </div>
-      <footer className="mx-auto flex h-7 max-w-[1600px] items-center justify-end px-4 text-right text-[10px] leading-4 text-slate-400 dark:text-slate-600">
+      <footer className="mx-auto flex h-5 max-w-[1600px] items-center justify-end px-4 text-right text-[9px] leading-3 text-slate-400 dark:text-slate-600">
         <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
           <a
             href="https://beian.miit.gov.cn/"
@@ -659,7 +687,7 @@ function HomeInner() {
               src="/brand/备案图标.png"
               alt=""
               aria-hidden="true"
-              className="h-3 w-3 opacity-70"
+              className="h-2.5 w-2.5 opacity-70"
             />
             川公网安备51010802001401号
           </a>

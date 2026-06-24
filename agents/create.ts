@@ -249,10 +249,21 @@ async function* generateStream(
                         yield sseEvent({ type: 'tool_call', name: tc.name });
                         const toolObj = tools.find((t: any) => t.name === tc.name);
                         if (toolObj) {
-                            const result = await toolObj.invoke(normalizeToolArgsForInvoke(tc.args));
-                            const resultStr = typeof result === 'string' ? result : JSON.stringify(result);
-                            yield sseEvent({ type: 'tool_result', name: tc.name, content: resultStr });
-                            messages.push(new LCToolMessage({ content: resultStr, tool_call_id: tc.id || '' }));
+                            try {
+                                const result = await toolObj.invoke(normalizeToolArgsForInvoke(tc.args));
+                                const resultStr = typeof result === 'string' ? result : JSON.stringify(result);
+                                yield sseEvent({ type: 'tool_result', name: tc.name, content: resultStr });
+                                messages.push(new LCToolMessage({ content: resultStr, tool_call_id: tc.id || '' }));
+                            } catch (error) {
+                                logger.error('Tool unavailable:', (error as Error).message);
+                                const fallback = '搜索工具暂不可用。请不要再次调用工具，直接根据已有知识和用户给出的大纲写完整文章。';
+                                yield sseEvent({ type: 'tool_result', name: tc.name, content: fallback });
+                                messages.push(new LCToolMessage({ content: fallback, tool_call_id: tc.id || '' }));
+                            }
+                        } else {
+                            const fallback = '搜索工具未配置。请不要再次调用工具，直接根据已有知识和用户给出的大纲写完整文章。';
+                            yield sseEvent({ type: 'tool_result', name: tc.name, content: fallback });
+                            messages.push(new LCToolMessage({ content: fallback, tool_call_id: tc.id || '' }));
                         }
                     } else {
                         messages.push(new LCToolMessage({ content: '已搜索过，请直接写文章。', tool_call_id: tc.id || '' }));

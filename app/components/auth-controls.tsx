@@ -525,12 +525,6 @@ export function AuthControls() {
               </Button>
             </form>
 
-            <p className="rounded-lg bg-brand-50 px-3 py-2 text-xs leading-5 text-slate-500 dark:bg-white/5 dark:text-slate-400">
-              GitHub OAuth App 的回调地址填写 Supabase：{" "}
-              <span className="font-medium text-slate-700 dark:text-slate-200">https://hptvxnxdhtgivggnhlmi.supabase.co/auth/v1/callback</span>
-              。站点跳转白名单仍需要允许本网站的 <span className="font-medium text-slate-700 dark:text-slate-200">/auth/callback</span>。
-            </p>
-
             {loginStatus && <StatusMessage status={loginStatus} />}
           </div>
         </ModalShell>
@@ -760,15 +754,15 @@ function ModalShell({
         className="max-h-[calc(100dvh-48px)] w-full max-w-[560px] overflow-y-auto rounded-xl border border-white/70 bg-white p-5 shadow-[0_24px_70px_rgba(15,23,42,0.36)] dark:border-white/10 dark:bg-slate-950"
         onMouseDown={(event) => event.stopPropagation()}
       >
-        <div className="mb-4 flex items-start justify-between gap-4">
-          <div>
+        <div className="relative mb-4">
+          <div className="px-9 text-center">
             <h2 className="text-base font-semibold text-slate-950 dark:text-slate-50">{title}</h2>
             <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{subtitle}</p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-white/10 dark:hover:text-slate-100"
+            className="absolute right-0 top-0 flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-white/10 dark:hover:text-slate-100"
             aria-label="关闭"
           >
             <CloseIcon className="h-4 w-4" />
@@ -833,8 +827,19 @@ function ensurePasskeySupported() {
 
 function authErrorMessage(error: unknown, fallback: string) {
   const message = error instanceof Error ? error.message : "";
+  const code = typeof error === "object" && error && "code" in error ? String((error as { code?: unknown }).code ?? "") : "";
+  const status = typeof error === "object" && error && "status" in error ? Number((error as { status?: unknown }).status) : 0;
   const lowerMessage = message.toLowerCase();
+  const lowerCode = code.toLowerCase();
 
+  if (
+    status >= 500 ||
+    lowerCode.includes("unexpected_failure") ||
+    lowerMessage.includes("error sending confirmation email") ||
+    lowerMessage.includes("unexpected failure")
+  ) {
+    return "注册邮件发送失败。请检查 Supabase Auth 的 SMTP 配置，或临时关闭邮箱确认后再试。";
+  }
   if (lowerMessage.includes("sso") || lowerMessage.includes("single sign-on")) {
     return "当前账号由第三方登录创建，Supabase 暂不支持此类账号直接添加 Passkey。请先用邮箱登录后再添加。";
   }
