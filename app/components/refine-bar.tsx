@@ -4,7 +4,7 @@ import { useState, useCallback, useMemo } from 'react';
 import { useConversationId } from '@/app/lib/conversation-context';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { getSupabaseAuthHeader } from '@/lib/supabase/client';
+import { getLocalApiHeaders } from '@/app/lib/local-api-settings';
 import { useI18n } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
@@ -127,10 +127,9 @@ export function RefineBar({ content, onRefineComplete, onRefineStart, onRefineEn
         };
       }
 
-      const authHeader = await getSupabaseAuthHeader();
       const response = await fetch('/refine', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'makers-conversation-id': conversationId, ...authHeader },
+        headers: { 'Content-Type': 'application/json', 'makers-conversation-id': conversationId, ...getLocalApiHeaders() },
         body: JSON.stringify(body),
       });
 

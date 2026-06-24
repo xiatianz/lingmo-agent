@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
-import { getSupabaseAuthHeader } from "@/lib/supabase/client";
+import { getLocalApiHeaders } from "@/app/lib/local-api-settings";
 import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
@@ -51,12 +51,11 @@ export function TopicForm({ onGenerate, onStop, isGenerating, preferences }: Top
     setIsLoadingKeywords(true);
     setSuggestedKeywords("");
 
-    getSupabaseAuthHeader()
-      .then((authHeader) => fetch('/suggest-keywords', {
+    fetch('/suggest-keywords', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'makers-conversation-id': conversationId, ...authHeader },
+        headers: { 'Content-Type': 'application/json', 'makers-conversation-id': conversationId, ...getLocalApiHeaders() },
         body: JSON.stringify({ topic: trimmed }),
-      }))
+      })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (data?.keywords) setSuggestedKeywords(data.keywords);

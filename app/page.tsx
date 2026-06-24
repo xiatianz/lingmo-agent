@@ -14,8 +14,8 @@ import { OutlineCard } from "./components/outline-card";
 import { LanguageToggle } from "@/components/ui/language-toggle";
 import { TokenUsage } from "@/components/ui/token-usage";
 import { BrandMark } from "@/components/ui/brand-mark";
-import { AuthControls } from "./components/auth-controls";
-import { getSupabaseAuthHeader } from "@/lib/supabase/client";
+import { ApiSettingsControls } from "./components/api-settings-controls";
+import { getLocalApiHeaders } from "./lib/local-api-settings";
 import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import {
@@ -90,18 +90,18 @@ function HomeInner() {
   const [storageWarning, setStorageWarning] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'error' | 'success' } | null>(null);
+  const [usageRefreshKey, setUsageRefreshKey] = useState(0);
 
   // Ref for triggering scroll
   const editorScrollRef = useRef<{ scrollToTop: () => void; scrollToSection: (index: number) => void } | null>(null);
 
   // Load preferences on mount
   useEffect(() => {
-    getSupabaseAuthHeader()
-      .then((authHeader) => fetch('/preferences', {
+    fetch('/preferences', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeader },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'get', userId: 'default' }),
-      }))
+      })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (data?.preferences) {
@@ -150,10 +150,9 @@ function HomeInner() {
       updateStep("research", "active");
 
       try {
-        const authHeader = await getSupabaseAuthHeader();
         const res = await fetch('/outline', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'makers-conversation-id': conversationId, ...authHeader },
+          headers: { 'Content-Type': 'application/json', 'makers-conversation-id': conversationId, ...getLocalApiHeaders() },
           body: JSON.stringify(params),
         });
 
@@ -239,10 +238,9 @@ function HomeInner() {
       setApiError(null);
 
       try {
-        const authHeader = await getSupabaseAuthHeader();
         const response = await fetch(endpoint, {
           method: "POST",
-          headers: { "Content-Type": "application/json", "makers-conversation-id": conversationId, ...authHeader },
+          headers: { "Content-Type": "application/json", "makers-conversation-id": conversationId, ...getLocalApiHeaders() },
           body: JSON.stringify({
             topic: params.topic,
             keywords: params.keywords,
@@ -386,14 +384,15 @@ function HomeInner() {
         }
         // Trigger auto-save after generation completes (creates new article)
         setShouldAutoSave(true);
+        setUsageRefreshKey((key) => key + 1);
 
         // Scroll to top after generation completes
         setTimeout(() => editorScrollRef.current?.scrollToTop(), 100);
 
         // Record usage to preferences
-        getSupabaseAuthHeader().then((authHeader) => fetch('/preferences', {
+        fetch('/preferences', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...authHeader },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             action: 'recordUsage',
             userId: 'default',
@@ -402,7 +401,7 @@ function HomeInner() {
             style: params.style,
             length: params.length,
           }),
-        })).then(r => r.ok ? r.json() : null).then(data => {
+        }).then(r => r.ok ? r.json() : null).then(data => {
           if (data?.preferences) setPreferences(data.preferences);
         }).catch(() => {});
       } catch (err) {
@@ -568,7 +567,7 @@ function HomeInner() {
           </div>
           <div className="flex items-center gap-3">
             <TokenUsage inputTokens={tokenUsage.input} outputTokens={tokenUsage.output} />
-            <AuthControls />
+            <ApiSettingsControls refreshKey={usageRefreshKey} />
             <LanguageToggle />
           </div>
         </div>
@@ -642,6 +641,7 @@ function HomeInner() {
                     const refineTokens = usage.input + usage.output;
                     setTokenUsage(prev => ({ input: prev.input + usage.input, output: prev.output + usage.output }));
                     setStepTokens(prev => ({ ...prev, refine: refineTokens }));
+                    setUsageRefreshKey((key) => key + 1);
                   }}
                   isRefining={isRefining}
                 />

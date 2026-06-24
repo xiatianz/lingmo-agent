@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { getSupabaseAuthHeader } from '@/lib/supabase/client';
 import { useI18n } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
@@ -53,10 +52,9 @@ export function ArticleHistory({
 
   const fetchArticles = useCallback(async () => {
     try {
-      const authHeader = await getSupabaseAuthHeader();
       const res = await fetch('/articles', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeader },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'list' }),
       });
       const data = await res.json().catch(() => null);
@@ -88,11 +86,10 @@ export function ArticleHistory({
         const title = firstLine.replace(/^#+\s*/, '').slice(0, 100);
 
         try {
-          const authHeader = await getSupabaseAuthHeader();
           if (currentArticleId) {
             const res = await fetch('/articles', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json', ...authHeader },
+              headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ action: 'addVersion', id: currentArticleId, content: currentContent }),
             });
 
@@ -120,7 +117,7 @@ export function ArticleHistory({
 
             const articleRes = await fetch('/articles', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json', ...authHeader },
+              headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ action: 'get', id: currentArticleId }),
             });
             if (articleRes.ok) {
@@ -132,7 +129,7 @@ export function ArticleHistory({
           } else {
             const res = await fetch('/articles', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json', ...authHeader },
+              headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 action: 'save',
                 article: { title, content: currentContent, keywords: currentKeywords, style: currentStyle, createdAt: new Date().toISOString() },
@@ -182,10 +179,9 @@ export function ArticleHistory({
     async (id: string, e: React.MouseEvent) => {
       e.stopPropagation();
       try {
-        const authHeader = await getSupabaseAuthHeader();
         await fetch('/articles', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...authHeader },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'delete', id }),
         });
         setArticles((prev) => prev.filter((a) => a.id !== id));

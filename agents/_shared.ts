@@ -3,14 +3,7 @@
  * Centralizes model initialization, environment config, and SSE helpers.
  */
 import { initChatModel } from 'langchain';
-import {
-    decryptApiKey,
-    getAuthenticatedUser,
-    getStoredModelKey,
-    getSupabaseAdmin,
-    isSupabaseServerConfigured,
-    upsertProfile,
-} from '../lib/server/supabase-admin';
+import { enforcePlatformDailyQuota, parseRequestModelConfig } from '../lib/quota.mjs';
 
 type Model = Awaited<ReturnType<typeof initChatModel>>;
 
@@ -23,10 +16,7 @@ export interface AgentEnv {
 }
 
 interface AgentContextEnv extends Record<string, string | undefined> {
-    BYOK_BYPASS_DAILY_LIMIT?: string;
     DEFAULT_DAILY_REQUEST_LIMIT?: string;
-    DEFAULT_DAILY_TOKEN_LIMIT?: string;
-    USER_KEY_ENCRYPTION_SECRET?: string;
 }
 
 export interface ModelResolution {
@@ -80,16 +70,6 @@ export async function createModel(env: AgentEnv, options?: { timeout?: number })
     return model;
 }
 
-function boolFromEnv(value: string | undefined, fallback: boolean) {
-    if (value === undefined) return fallback;
-    return value === 'true' || value === '1';
-}
-
-function numberFromEnv(value: string | undefined, fallback = 0) {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
-}
-
 function jsonError(message: string, status: number) {
     return new Response(JSON.stringify({ error: message }), {
         status,
@@ -97,99 +77,30 @@ function jsonError(message: string, status: number) {
     });
 }
 
-function todayIsoDate() {
-    return new Date().toISOString().slice(0, 10);
-}
-
 export async function resolveModelEnv(context: any): Promise<ModelResolution> {
     const contextEnv = (context?.env ?? {}) as AgentContextEnv;
-    const platformEnv = getAgentEnv(contextEnv);
+    const requestConfig = parseRequestModelConfig(context?.request);
 
-    if (!isSupabaseServerConfigured(contextEnv)) {
-        return { env: platformEnv, userId: null, usingUserKey: false };
+    if (requestConfig) {
+        return {
+            env: {
+                AI_GATEWAY_API_KEY: requestConfig.apiKey,
+                AI_GATEWAY_BASE_URL: requestConfig.baseUrl,
+                AI_GATEWAY_MODEL: requestConfig.model,
+            },
+            userId: null,
+            usingUserKey: true,
+        };
     }
 
-    const user = await getAuthenticatedUser(contextEnv, context?.request);
-    if (!user) {
-        return { env: platformEnv, userId: null, usingUserKey: false };
-    }
-
-    await upsertProfile(contextEnv, user);
-
-    const storedKey = await getStoredModelKey(contextEnv, user.id);
-    if (!storedKey) {
-        return { env: platformEnv, userId: user.id, usingUserKey: false };
-    }
-
-    if (!contextEnv.USER_KEY_ENCRYPTION_SECRET) {
-        throw new Error('Missing USER_KEY_ENCRYPTION_SECRET');
-    }
-
-    const apiKey = await decryptApiKey(storedKey.encrypted_api_key, contextEnv.USER_KEY_ENCRYPTION_SECRET);
-
-    return {
-        env: {
-            AI_GATEWAY_API_KEY: apiKey,
-            AI_GATEWAY_BASE_URL: storedKey.base_url,
-            AI_GATEWAY_MODEL: storedKey.model,
-        },
-        userId: user.id,
-        usingUserKey: true,
-    };
+    return { env: getAgentEnv(contextEnv), userId: null, usingUserKey: false };
 }
 
 export async function enforceDailyQuota(context: any, resolution: ModelResolution): Promise<Response | null> {
-    const contextEnv = (context?.env ?? {}) as AgentContextEnv;
-    if (!resolution.userId || !isSupabaseServerConfigured(contextEnv)) return null;
+    if (resolution.usingUserKey) return null;
 
-    const byokBypass = boolFromEnv(contextEnv.BYOK_BYPASS_DAILY_LIMIT, true);
-    if (resolution.usingUserKey && byokBypass) return null;
-
-    const supabase = getSupabaseAdmin(contextEnv);
-    const { data: limitRow, error: limitError } = await supabase
-        .schema('private')
-        .from('user_limits')
-        .select('daily_request_limit, daily_token_limit, byok_bypass_limit')
-        .eq('user_id', resolution.userId)
-        .maybeSingle();
-    if (limitError) throw limitError;
-
-    const userByokBypass = limitRow?.byok_bypass_limit;
-    if (resolution.usingUserKey && (userByokBypass ?? byokBypass)) return null;
-
-    const requestLimit = Number(limitRow?.daily_request_limit) || numberFromEnv(contextEnv.DEFAULT_DAILY_REQUEST_LIMIT, 0);
-    const tokenLimit = Number(limitRow?.daily_token_limit) || numberFromEnv(contextEnv.DEFAULT_DAILY_TOKEN_LIMIT, 0);
-    if (!requestLimit && !tokenLimit) return null;
-
-    const usageDate = todayIsoDate();
-    const { data: usageRow, error: usageError } = await supabase
-        .schema('private')
-        .from('usage_daily')
-        .select('request_count, input_tokens, output_tokens')
-        .eq('user_id', resolution.userId)
-        .eq('usage_date', usageDate)
-        .maybeSingle();
-    if (usageError) throw usageError;
-
-    const requestCount = Number(usageRow?.request_count ?? 0);
-    const usedTokens = Number(usageRow?.input_tokens ?? 0) + Number(usageRow?.output_tokens ?? 0);
-
-    if (requestLimit && requestCount >= requestLimit) {
-        return jsonError('Daily request quota exceeded', 429);
-    }
-    if (tokenLimit && usedTokens >= tokenLimit) {
-        return jsonError('Daily token quota exceeded', 429);
-    }
-
-    const { error: upsertError } = await supabase.schema('private').from('usage_daily').upsert({
-        user_id: resolution.userId,
-        usage_date: usageDate,
-        request_count: requestCount + 1,
-        input_tokens: Number(usageRow?.input_tokens ?? 0),
-        output_tokens: Number(usageRow?.output_tokens ?? 0),
-    });
-    if (upsertError) throw upsertError;
-
+    const quota = await enforcePlatformDailyQuota(context);
+    if (!quota.allowed) return quota.response ?? jsonError('Daily request quota exceeded', 429);
     return null;
 }
 
@@ -199,28 +110,10 @@ export async function recordTokenUsage(
     inputTokens: number,
     outputTokens: number
 ) {
-    const contextEnv = (context?.env ?? {}) as AgentContextEnv;
-    if (!resolution.userId || !isSupabaseServerConfigured(contextEnv)) return;
-
-    const supabase = getSupabaseAdmin(contextEnv);
-    const usageDate = todayIsoDate();
-    const { data: usageRow, error: usageError } = await supabase
-        .schema('private')
-        .from('usage_daily')
-        .select('request_count, input_tokens, output_tokens')
-        .eq('user_id', resolution.userId)
-        .eq('usage_date', usageDate)
-        .maybeSingle();
-    if (usageError) throw usageError;
-
-    const { error } = await supabase.schema('private').from('usage_daily').upsert({
-        user_id: resolution.userId,
-        usage_date: usageDate,
-        request_count: Number(usageRow?.request_count ?? 1),
-        input_tokens: Number(usageRow?.input_tokens ?? 0) + Math.max(0, inputTokens || 0),
-        output_tokens: Number(usageRow?.output_tokens ?? 0) + Math.max(0, outputTokens || 0),
-    });
-    if (error) throw error;
+    void context;
+    void resolution;
+    void inputTokens;
+    void outputTokens;
 }
 
 /** Create a logger with a consistent prefix. */
