@@ -2,11 +2,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  parseRequestModelConfig,
   enforcePlatformDailyQuota,
   getDailyRequestLimit,
   getPlatformUsageStatus,
   getRemainingRequests,
-  parseRequestModelConfig,
 } from "../lib/quota.mjs";
 
 function createRequest(headers = {}, body = {}) {
@@ -94,6 +94,50 @@ test("uses EdgeOne KV bindings exposed directly on context", async () => {
   assert.equal(status.configured, true);
   assert.equal(status.count, 1);
   assert.equal(status.remaining, 19);
+});
+
+test("uses Makers KV bindings exposed as global variables", async () => {
+  const kv = createKv();
+  const request = createRequest({ "x-forwarded-for": "203.0.113.14" });
+  globalThis.my_kv = kv;
+
+  try {
+    const quota = await enforcePlatformDailyQuota({
+      request,
+      env: { DEFAULT_DAILY_REQUEST_LIMIT: "20" },
+    });
+    const status = await getPlatformUsageStatus({
+      request,
+      env: { DEFAULT_DAILY_REQUEST_LIMIT: "20" },
+    });
+
+    assert.equal(quota.configured, true);
+    assert.equal(status.configured, true);
+    assert.equal(status.count, 1);
+    assert.equal(kv.values.size, 1);
+  } finally {
+    delete globalThis.my_kv;
+  }
+});
+
+test("platform quota helper can still increment KV for BYOK-shaped requests", async () => {
+  const kv = createKv();
+  const request = createRequest({
+    "x-forwarded-for": "203.0.113.13",
+    "x-lingmo-api-key": "sk-user",
+    "x-lingmo-base-url": "https://api.example.com/v1",
+    "x-lingmo-model": "gpt-test",
+  });
+  const env = { LINGMO_USAGE_KV: kv, DEFAULT_DAILY_REQUEST_LIMIT: "2" };
+
+  const first = await enforcePlatformDailyQuota({ request, env });
+  const second = await enforcePlatformDailyQuota({ request, env });
+  const third = await enforcePlatformDailyQuota({ request, env });
+
+  assert.equal(first.allowed, true);
+  assert.equal(second.allowed, true);
+  assert.equal(third.allowed, false);
+  assert.equal(kv.values.size, 1);
 });
 
 test("reports remaining requests from limit minus used count", async () => {
