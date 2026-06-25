@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { enforcePlatformDailyQuota, parseRequestModelConfig, QUOTA_CHECKED_HEADER } from './lib/quota.mjs';
+import { enforcePlatformDailyQuota, getPlatformUsageStatus, parseRequestModelConfig, QUOTA_CHECKED_HEADER } from './lib/quota.mjs';
 
 const AGENT_PATHS = ['/outline', '/create', '/create-lite', '/refine', '/suggest-keywords', '/stop', '/research', '/optimize'];
 const QUOTA_PATHS = ['/outline', '/create', '/create-lite', '/refine', '/suggest-keywords', '/research', '/optimize'];
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  if (pathname === '/usage') {
+    const usage = await getPlatformUsageStatus({ request });
+    return NextResponse.json({ usage });
+  }
+
   if (!AGENT_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'))) {
     return NextResponse.next();
   }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Card, CardHeader, CardContent } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useI18n } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
@@ -201,24 +201,12 @@ export function ArticleHistory({
     [onLoadArticle]
   );
 
+  if (!isLoading && !blobError && articles.length === 0 && !savedToast) {
+    return null;
+  }
+
   return (
     <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-            <svg className="h-4 w-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            {t.history}
-            {articles.length > 0 && (
-              <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-brand-100 px-1.5 text-xs font-medium text-brand-700 shadow-sm dark:bg-brand-900/30 dark:text-brand-400">
-                {articles.length}
-              </span>
-            )}
-          </h2>
-        </div>
-      </CardHeader>
-
       <CardContent>
         {savedToast && (
           <div className="mb-3 rounded-lg bg-green-50 px-3 py-2 text-xs text-green-700 dark:bg-green-900/20 dark:text-green-400">
@@ -238,7 +226,7 @@ export function ArticleHistory({
             <p className="text-xs font-medium text-amber-700 dark:text-amber-400">{t.blobNotConfigured}</p>
           </div>
         ) : articles.length === 0 ? (
-          <p className="py-4 text-center text-sm text-slate-500 dark:text-slate-400">{t.noHistory}</p>
+          <div className="h-1" aria-hidden="true" />
         ) : (
           <ul className="space-y-2 max-h-[300px] overflow-y-auto">
             {articles.map((article) => (
