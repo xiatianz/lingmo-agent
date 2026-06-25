@@ -2,11 +2,13 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  parseRequestModelConfig,
   enforcePlatformDailyQuota,
   getDailyRequestLimit,
   getPlatformUsageStatus,
   getRemainingRequests,
+  isQuotaCheckedRequest,
+  parseRequestModelConfig,
+  QUOTA_CHECKED_HEADER,
 } from "../lib/quota.mjs";
 
 function createRequest(headers = {}, body = {}) {
@@ -58,6 +60,12 @@ test("parses local BYOK config from request headers without persisting it", () =
 test("ignores incomplete local BYOK config", () => {
   const request = createRequest({ "x-lingmo-api-key": "sk-user" });
   assert.equal(parseRequestModelConfig(request), null);
+});
+
+test("detects requests already checked by Edge proxy quota", () => {
+  assert.equal(isQuotaCheckedRequest(createRequest({ [QUOTA_CHECKED_HEADER]: "1" })), true);
+  assert.equal(isQuotaCheckedRequest(createRequest({ [QUOTA_CHECKED_HEADER]: "0" })), false);
+  assert.equal(isQuotaCheckedRequest(createRequest({})), false);
 });
 
 test("increments EdgeOne KV quota for platform API requests", async () => {

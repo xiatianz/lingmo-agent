@@ -3,7 +3,7 @@
  * Centralizes model initialization, environment config, and SSE helpers.
  */
 import { initChatModel } from 'langchain';
-import { enforcePlatformDailyQuota, parseRequestModelConfig } from '../lib/quota.mjs';
+import { enforcePlatformDailyQuota, isQuotaCheckedRequest, parseRequestModelConfig } from '../lib/quota.mjs';
 
 type Model = Awaited<ReturnType<typeof initChatModel>>;
 
@@ -98,6 +98,7 @@ export async function resolveModelEnv(context: any): Promise<ModelResolution> {
 
 export async function enforceDailyQuota(context: any, resolution: ModelResolution): Promise<Response | null> {
     if (resolution.usingUserKey) return null;
+    if (isQuotaCheckedRequest(context?.request)) return null;
 
     const quota = await enforcePlatformDailyQuota(context);
     if (!quota.allowed) return quota.response ?? jsonError('Daily request quota exceeded', 429);
