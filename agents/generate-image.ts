@@ -126,7 +126,7 @@ async function generateImageWithCloudBase(env: any, payload: {
         secretKey: config.secretKey,
     });
 
-    logger.log(`Using CloudBase image function "${config.functionName}" in env "${config.envId}"`);
+    logger.log(`Using CloudBase image function "${config.functionName}" in env "${config.envId}" with model "${payload.model || "default (hunyuan-image)"}"`);
     const res = await app.callFunction({
         name: config.functionName,
         data: {
