@@ -24,6 +24,10 @@ import {
   normalizeGeneratedArticle,
   shouldFinalizeGeneratedArticle,
 } from "@/lib/generation-stream.mjs";
+import { ImageForm } from "./components/image-form";
+import { ImageCanvas } from "./components/image-canvas";
+import { ImageHistory } from "./components/image-history";
+import type { ImageHistoryItem } from "./components/image-history";
 
 export type StepStatus = "pending" | "active" | "done";
 export type Step = "research" | "outline" | "writing" | "review" | "refine";
@@ -55,6 +59,20 @@ function HomeInner() {
   const { t } = useI18n();
   const conversationId = useConversationId();
   const [content, setContent] = useState("");
+
+  // Tab management
+  const [activeTab, setActiveTab] = useState<"text" | "image">("image");
+
+  // Image Generation State
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [imagePrompt, setImagePrompt] = useState<string | null>(null);
+  const [imageRawPrompt, setImageRawPrompt] = useState<string | null>(null);
+  const [imageAspectRatio, setImageAspectRatio] = useState<string>("1:1");
+  const [isGeneratingImage, setIsGeneratingImage] = useState<boolean>(false);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const [imageNewHistoryItem, setImageNewHistoryItem] = useState<ImageHistoryItem | null>(null);
+  const [currentImageId, setCurrentImageId] = useState<string | null>(null);
+  const [imageAbortController, setImageAbortController] = useState<AbortController | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [steps, setSteps] = useState<Record<Step, StepStatus>>({
     research: "pending",
@@ -435,6 +453,96 @@ function HomeInner() {
     }).catch(() => {});
   }, [abortController, conversationId]);
 
+  const handleGenerateImage = useCallback(
+    async (params: any) => {
+      setIsGeneratingImage(true);
+      setImageError(null);
+      setImageAspectRatio(params.aspectRatio);
+      setImageRawPrompt(params.prompt);
+      setImageUrl(null);
+      setImagePrompt(null);
+      setCurrentImageId(null);
+      setImageNewHistoryItem(null);
+
+      const controller = new AbortController();
+      setImageAbortController(controller);
+
+      try {
+        const res = await fetch("/generate-image", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "makers-conversation-id": conversationId,
+            ...getLocalApiHeaders(),
+          },
+          body: JSON.stringify(params),
+          signal: controller.signal,
+        });
+
+        if (!res.ok) {
+          const errText = await res.text();
+          let errMsg = "生成图像失败，请重试";
+          if (res.status === 429 || errText.includes("quota")) {
+            errMsg = "已超出今日免费生图额度";
+          } else if (errText) {
+            try {
+              const parsed = JSON.parse(errText);
+              if (parsed.error) errMsg = parsed.error;
+            } catch {
+              errMsg = errText.slice(0, 100);
+            }
+          }
+          throw new Error(errMsg);
+        }
+
+        const data = await res.json();
+        if (data.error) {
+          throw new Error(data.error);
+        }
+
+        setImageUrl(data.url);
+        setImagePrompt(data.prompt);
+
+        const newItem: ImageHistoryItem = {
+          id: crypto.randomUUID(),
+          url: data.url,
+          prompt: data.prompt,
+          rawPrompt: params.prompt,
+          aspectRatio: params.aspectRatio,
+          style: params.style,
+          createdAt: new Date().toISOString(),
+          width: data.width,
+          height: data.height,
+        };
+        setCurrentImageId(newItem.id);
+        setImageNewHistoryItem(newItem);
+        setUsageRefreshKey((key) => key + 1);
+      } catch (err) {
+        if ((err as Error).name !== "AbortError") {
+          setImageError((err as Error).message);
+        }
+      } finally {
+        setIsGeneratingImage(false);
+        setImageAbortController(null);
+      }
+    },
+    [conversationId]
+  );
+
+  const handleStopImage = useCallback(() => {
+    imageAbortController?.abort();
+    setIsGeneratingImage(false);
+  }, [imageAbortController]);
+
+  const handleLoadHistoryImage = useCallback((item: ImageHistoryItem) => {
+    setCurrentImageId(item.id);
+    setImageUrl(item.url);
+    setImagePrompt(item.prompt);
+    setImageRawPrompt(item.rawPrompt);
+    setImageAspectRatio(item.aspectRatio);
+    setImageError(null);
+  }, []);
+
   const handleRefineStart = useCallback(() => {
     setIsRefining(true);
     updateStep("refine", "active");
@@ -596,74 +704,141 @@ function HomeInner() {
           </div>
         </div>
       )}
-      <div className="mx-auto box-border max-w-[1600px] px-4 py-3 lg:h-[calc(100vh-4.75rem)] lg:overflow-hidden">
-        <div className="flex flex-col gap-4 lg:h-full lg:flex-row">
+      <div className="mx-auto box-border max-w-[1600px] px-4 py-3 lg:h-[calc(100vh-4.75rem)] lg:overflow-hidden flex flex-col gap-3">
+        {/* Tab Switcher */}
+        <div className="flex-shrink-0 flex items-center justify-between border-b border-slate-200/60 dark:border-white/5 pb-2">
+          <div className="flex bg-slate-100 dark:bg-slate-900 p-0.5 rounded-lg border border-slate-200/55 dark:border-white/5">
+            <button
+              onClick={() => setActiveTab("image")}
+              className={cn(
+                "flex items-center gap-1.5 px-4 py-1.5 rounded-md text-xs font-semibold transition",
+                activeTab === "image"
+                  ? "bg-white text-brand-700 shadow-sm dark:bg-slate-950 dark:text-brand-300"
+                  : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
+              )}
+            >
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              创意生图
+            </button>
+            <button
+              onClick={() => setActiveTab("text")}
+              className={cn(
+                "flex items-center gap-1.5 px-4 py-1.5 rounded-md text-xs font-semibold transition",
+                activeTab === "text"
+                  ? "bg-white text-brand-700 shadow-sm dark:bg-slate-950 dark:text-brand-300"
+                  : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
+              )}
+            >
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+              图文写作
+            </button>
+          </div>
+        </div>
+
+        <div className="flex-1 min-h-0 flex flex-col gap-4 lg:h-full lg:flex-row">
           {/* Left sidebar */}
           <aside className="w-full flex-shrink-0 space-y-2 lg:h-full lg:w-[280px] lg:pr-1">
-            <TopicForm onGenerate={handleGenerate} onStop={handleStop} isGenerating={isGenerating || isGeneratingOutline} preferences={preferences} />
-            <ProcessSteps steps={steps} stepTokens={stepTokens} />
+            {activeTab === "image" ? (
+              <ImageForm
+                onGenerate={handleGenerateImage}
+                onStop={handleStopImage}
+                isGenerating={isGeneratingImage}
+              />
+            ) : (
+              <>
+                <TopicForm onGenerate={handleGenerate} onStop={handleStop} isGenerating={isGenerating || isGeneratingOutline} preferences={preferences} />
+                <ProcessSteps steps={steps} stepTokens={stepTokens} />
+              </>
+            )}
           </aside>
 
           {/* Main content */}
           <main className="flex-1 min-w-0 space-y-3 lg:flex lg:h-full lg:min-h-0 lg:flex-col lg:overflow-hidden">
-            {/* Outline confirmation */}
-            {outline && !isGenerating && (
-              <OutlineCard
-                outline={outline}
-                onConfirm={handleOutlineConfirm}
-                onRegenerate={handleOutlineRegenerate}
-                onDismiss={handleOutlineDismiss}
-                isLoading={isGeneratingOutline}
+            {activeTab === "image" ? (
+              <ImageCanvas
+                url={imageUrl}
+                prompt={imagePrompt}
+                rawPrompt={imageRawPrompt}
+                aspectRatio={imageAspectRatio}
+                isGenerating={isGeneratingImage}
+                error={imageError}
               />
-            )}
-
-            <ArticleEditor
-              content={content}
-              isGenerating={isGenerating}
-              isGeneratingOutline={isGeneratingOutline}
-              isRefining={isRefining}
-              isLoadingArticle={isLoadingArticle}
-              hasOutline={!!outline}
-              versions={versions}
-              currentVersionIndex={currentVersionIndex}
-              onVersionSwitch={handleVersionSwitch}
-              refinedSectionIndex={refinedSectionIndex}
-              scrollRef={editorScrollRef}
-            />
-            {content && !isGenerating && (
+            ) : (
               <>
-                <RefineBar
+                {/* Outline confirmation */}
+                {outline && !isGenerating && (
+                  <OutlineCard
+                    outline={outline}
+                    onConfirm={handleOutlineConfirm}
+                    onRegenerate={handleOutlineRegenerate}
+                    onDismiss={handleOutlineDismiss}
+                    isLoading={isGeneratingOutline}
+                  />
+                )}
+
+                <ArticleEditor
                   content={content}
-                  onRefineComplete={handleRefineComplete}
-                  onRefineStart={handleRefineStart}
-                  onRefineEnd={handleRefineEnd}
-                  onTokenUsage={(usage) => {
-                    const refineTokens = usage.input + usage.output;
-                    setTokenUsage(prev => ({ input: prev.input + usage.input, output: prev.output + usage.output }));
-                    setStepTokens(prev => ({ ...prev, refine: refineTokens }));
-                    setUsageRefreshKey((key) => key + 1);
-                  }}
+                  isGenerating={isGenerating}
+                  isGeneratingOutline={isGeneratingOutline}
                   isRefining={isRefining}
+                  isLoadingArticle={isLoadingArticle}
+                  hasOutline={!!outline}
+                  versions={versions}
+                  currentVersionIndex={currentVersionIndex}
+                  onVersionSwitch={handleVersionSwitch}
+                  refinedSectionIndex={refinedSectionIndex}
+                  scrollRef={editorScrollRef}
                 />
-                <ExportPanel content={content} />
+                {content && !isGenerating && (
+                  <>
+                    <RefineBar
+                      content={content}
+                      onRefineComplete={handleRefineComplete}
+                      onRefineStart={handleRefineStart}
+                      onRefineEnd={handleRefineEnd}
+                      onTokenUsage={(usage) => {
+                        const refineTokens = usage.input + usage.output;
+                        setTokenUsage(prev => ({ input: prev.input + usage.input, output: prev.output + usage.output }));
+                        setStepTokens(prev => ({ ...prev, refine: refineTokens }));
+                        setUsageRefreshKey((key) => key + 1);
+                      }}
+                      isRefining={isRefining}
+                    />
+                    <ExportPanel content={content} />
+                  </>
+                )}
               </>
             )}
           </main>
 
           {/* Right sidebar */}
           <aside className="w-full flex-shrink-0 space-y-3 lg:h-full lg:w-[300px] lg:overflow-y-auto lg:pl-1">
-            <ArticleStats content={content} />
-            <SeoPanel content={content} keywords={keywords} />
-            <ArticleHistory
-              onLoadArticle={handleLoadArticle}
-              currentContent={content}
-              currentKeywords={keywords}
-              currentStyle={style}
-              shouldAutoSave={shouldAutoSave}
-              onAutoSaved={handleAutoSaved}
-              currentArticleId={currentArticleId}
-              onSaveError={handleSaveError}
-            />
+            {activeTab === "image" ? (
+              <ImageHistory
+                onLoadItem={handleLoadHistoryImage}
+                currentItemId={currentImageId}
+                newItem={imageNewHistoryItem}
+              />
+            ) : (
+              <>
+                <ArticleStats content={content} />
+                <SeoPanel content={content} keywords={keywords} />
+                <ArticleHistory
+                  onLoadArticle={handleLoadArticle}
+                  currentContent={content}
+                  currentKeywords={keywords}
+                  currentStyle={style}
+                  shouldAutoSave={shouldAutoSave}
+                  onAutoSaved={handleAutoSaved}
+                  currentArticleId={currentArticleId}
+                  onSaveError={handleSaveError}
+                />
+              </>
+            )}
           </aside>
         </div>
       </div>

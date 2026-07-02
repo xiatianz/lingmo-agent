@@ -4,6 +4,7 @@ export interface LocalApiSettings {
   providerLabel: string;
   baseUrl: string;
   model: string;
+  imageModel: string;
   apiKey: string;
   enabled: boolean;
 }
@@ -12,6 +13,7 @@ export const DEFAULT_LOCAL_API_SETTINGS: LocalApiSettings = {
   providerLabel: "OpenAI Compatible",
   baseUrl: "https://api.openai.com/v1",
   model: "gpt-4o-mini",
+  imageModel: "dall-e-3",
   apiKey: "",
   enabled: false,
 };
@@ -25,6 +27,7 @@ function normalizeSettings(value: Partial<LocalApiSettings> | null): LocalApiSet
     providerLabel: value?.providerLabel?.trim() || DEFAULT_LOCAL_API_SETTINGS.providerLabel,
     baseUrl: value?.baseUrl?.trim() || DEFAULT_LOCAL_API_SETTINGS.baseUrl,
     model: value?.model?.trim() || DEFAULT_LOCAL_API_SETTINGS.model,
+    imageModel: value?.imageModel?.trim() || DEFAULT_LOCAL_API_SETTINGS.imageModel,
     apiKey: value?.apiKey?.trim() || "",
     enabled: Boolean(value?.enabled && value?.apiKey?.trim() && value?.model?.trim()),
   };
@@ -64,5 +67,6 @@ export function getLocalApiHeaders(settings = readLocalApiSettings()): Record<st
     "x-lingmo-api-key": settings.apiKey.trim(),
     "x-lingmo-base-url": settings.baseUrl.trim(),
     "x-lingmo-model": settings.model.trim(),
+    "x-lingmo-image-model": settings.imageModel.trim(),
   };
 }

@@ -81,6 +81,7 @@ export function ApiSettingsControls({ refreshKey = 0 }: ApiSettingsControlsProps
       providerLabel: form.providerLabel.trim() || DEFAULT_LOCAL_API_SETTINGS.providerLabel,
       baseUrl: form.baseUrl.trim() || DEFAULT_LOCAL_API_SETTINGS.baseUrl,
       model: form.model.trim(),
+      imageModel: form.imageModel.trim() || DEFAULT_LOCAL_API_SETTINGS.imageModel,
       apiKey: form.apiKey.trim(),
       enabled: form.enabled,
     };
@@ -187,12 +188,20 @@ export function ApiSettingsControls({ refreshKey = 0 }: ApiSettingsControlsProps
                   placeholder="https://api.openai.com/v1"
                 />
               </Field>
-              <Field label="Model">
+              <Field label="文本模型 (Text Model)">
                 <input
                   value={form.model}
                   onChange={(event) => setForm((prev) => ({ ...prev, model: event.target.value }))}
                   className={inputClassName}
                   placeholder="gpt-4o-mini"
+                />
+              </Field>
+              <Field label="生图模型 (Image Model)">
+                <input
+                  value={form.imageModel}
+                  onChange={(event) => setForm((prev) => ({ ...prev, imageModel: event.target.value }))}
+                  className={inputClassName}
+                  placeholder="dall-e-3"
                 />
               </Field>
               <Field label="API Key">

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { enforcePlatformDailyQuota, getPlatformUsageStatus, parseRequestModelConfig, QUOTA_CHECKED_HEADER } from './lib/quota.mjs';
 
-const AGENT_PATHS = ['/outline', '/create', '/create-lite', '/refine', '/suggest-keywords', '/stop', '/research', '/optimize'];
-const QUOTA_PATHS = ['/outline', '/create', '/create-lite', '/refine', '/suggest-keywords', '/research', '/optimize'];
+const AGENT_PATHS = ['/outline', '/create', '/create-lite', '/refine', '/suggest-keywords', '/stop', '/research', '/optimize', '/generate-image'];
+const QUOTA_PATHS = ['/outline', '/create', '/create-lite', '/refine', '/suggest-keywords', '/research', '/optimize', '/generate-image'];
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
