@@ -22,6 +22,7 @@ export function ImageCanvas({
 }: ImageCanvasProps) {
   const [zoomOpen, setZoomOpen] = useState(false);
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied">("idle");
+  const [copyUrlStatus, setCopyUrlStatus] = useState<"idle" | "copied">("idle");
   const [generationTime, setGenerationTime] = useState(0);
 
   // Simple loading timer to keep the user engaged
@@ -42,6 +43,13 @@ export function ImageCanvas({
     navigator.clipboard.writeText(text).then(() => {
       setCopyStatus("copied");
       setTimeout(() => setCopyStatus("idle"), 2000);
+    });
+  }, []);
+
+  const copyUrlToClipboard = useCallback((text: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopyUrlStatus("copied");
+      setTimeout(() => setCopyUrlStatus("idle"), 2000);
     });
   }, []);
 
@@ -98,6 +106,16 @@ export function ImageCanvas({
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
               </svg>
               {copyStatus === "copied" ? "已复制" : "复制提示词"}
+            </button>
+            <button
+              onClick={() => copyUrlToClipboard(url)}
+              className="flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-600 shadow-sm transition hover:bg-slate-50 dark:border-white/10 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-white/5"
+              title="复制图片临时链接（24小时内有效）"
+            >
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+              </svg>
+              {copyUrlStatus === "copied" ? "已复制 (24h有效)" : "复制链接"}
             </button>
             <button
               onClick={downloadImage}
