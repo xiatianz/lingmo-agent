@@ -40,6 +40,17 @@ function getImageApiSize(ratio: string): string {
     }
 }
 
+function getCloudBaseImageSize(ratio: string): string {
+    switch (ratio) {
+        case '16:9': return '1280x720';
+        case '9:16': return '720x1280';
+        case '4:3': return '1024x768';
+        case '1:1':
+        default:
+            return '1024x1024';
+    }
+}
+
 function getImageGenerationUrl(baseUrl: string): string {
     const trimmed = baseUrl.replace(/\/$/, '');
     if (/\/v1\/images\/generations$/i.test(trimmed)) return trimmed;
@@ -221,7 +232,7 @@ export async function onRequest(context: any) {
                 aspectRatio,
                 style,
                 seed,
-                size: getImageApiSize(aspectRatio),
+                size: getCloudBaseImageSize(aspectRatio),
                 model: configuredImageModel,
             });
             imageUrl = result.url;
