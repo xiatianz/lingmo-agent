@@ -195,7 +195,7 @@ export function ApiSettingsControls({ refreshKey = 0 }: ApiSettingsControlsProps
                   value={form.imageBaseUrl}
                   onChange={(event) => setForm((prev) => ({ ...prev, imageBaseUrl: event.target.value }))}
                   className={inputClassName}
-                  placeholder="留空则使用上方 Base URL"
+                  placeholder="例如 https://your-9router-domain/v1"
                 />
               </Field>
               <Field label="文本模型 (Text Model)">
@@ -211,7 +211,7 @@ export function ApiSettingsControls({ refreshKey = 0 }: ApiSettingsControlsProps
                   value={form.imageModel}
                   onChange={(event) => setForm((prev) => ({ ...prev, imageModel: event.target.value }))}
                   className={inputClassName}
-                  placeholder="dall-e-3"
+                  placeholder="例如 image 或 gemini/gemini-3-pro-image-preview"
                 />
               </Field>
               <Field label="API Key">
@@ -235,7 +235,7 @@ export function ApiSettingsControls({ refreshKey = 0 }: ApiSettingsControlsProps
                 />
               </Field>
               <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
-                API Key 仅存储在本机浏览器 localStorage。若你的中转平台将 Chat 和生图分成不同通道，请填写生图专用 Base URL。
+                API Key 仅存储在本机浏览器 localStorage。9Router 生图地址请填写 API 根路径或 /v1 路径，不要填写控制台网页地址；生图模型请使用 /v1/models/image 中的模型或 Image Combo。
               </p>
 
               {status && (

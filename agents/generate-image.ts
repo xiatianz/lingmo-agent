@@ -39,6 +39,20 @@ function getImageApiSize(ratio: string): string {
     }
 }
 
+function getImageGenerationUrl(baseUrl: string): string {
+    const trimmed = baseUrl.replace(/\/$/, '');
+    if (/\/v1\/images\/generations$/i.test(trimmed)) return trimmed;
+    if (/\/images\/generations$/i.test(trimmed)) return trimmed;
+    if (/\/v1\/chat\/completions$/i.test(trimmed)) {
+        return trimmed.replace(/\/v1\/chat\/completions$/i, '/v1/images/generations');
+    }
+    if (/\/chat\/completions$/i.test(trimmed)) {
+        return trimmed.replace(/\/chat\/completions$/i, '/images/generations');
+    }
+    if (/\/v1$/i.test(trimmed)) return `${trimmed}/images/generations`;
+    return `${trimmed}/v1/images/generations`;
+}
+
 function normalizeImageResponse(data: any): string {
     const item = data?.data?.[0] ?? data?.images?.[0] ?? data?.output?.[0];
     const url = item?.url ?? item?.image_url ?? (typeof item === 'string' ? item : '');
@@ -121,8 +135,7 @@ export async function onRequest(context: any) {
         const imageBaseUrl = modelConfig.env.AI_GATEWAY_IMAGE_BASE_URL?.trim() || modelConfig.env.AI_GATEWAY_BASE_URL;
 
         if ((modelConfig.usingUserKey || configuredImageModel) && imageApiKey && imageBaseUrl) {
-            const apiBaseUrl = imageBaseUrl.replace(/\/chat\/completions$/, '').replace(/\/$/, '');
-            const targetUrl = `${apiBaseUrl}/images/generations`;
+            const targetUrl = getImageGenerationUrl(imageBaseUrl);
             const modelName = configuredImageModel || 'dall-e-3';
 
             logger.log(`Using image model "${modelName}" at ${targetUrl}`);
@@ -143,7 +156,12 @@ export async function onRequest(context: any) {
 
             if (!res.ok) {
                 const errBody = await res.text();
-                throw new Error(`DALL-E Generation failed (${res.status}): ${errBody}`);
+                const hint = res.status === 404
+                    ? ' 请确认生图 Base URL 是 9Router API 地址，例如 https://your-9router-domain/v1 或 https://your-9router-domain/v1/images/generations，而不是控制台网页地址。'
+                    : res.status === 400 && /does not support image generation/i.test(errBody)
+                        ? ' 请确认生图模型来自 9Router 的 /v1/models/image，且该 Image Combo 没有路由到只支持聊天的 provider。'
+                    : '';
+                throw new Error(`Image generation failed (${res.status}): ${errBody.slice(0, 500)}${hint}`);
             }
 
             const data = await res.json();
