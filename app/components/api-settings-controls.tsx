@@ -139,12 +139,12 @@ export function ApiSettingsControls({ refreshKey = 0 }: ApiSettingsControlsProps
         <>
           <button
             type="button"
-            className="fixed inset-0 z-[90] cursor-default bg-black/40 backdrop-blur-xs md:bg-transparent md:backdrop-blur-none"
+            className="fixed inset-0 z-[90] cursor-default bg-black/45 backdrop-blur-xs md:bg-transparent md:backdrop-blur-none"
             aria-label="关闭 API 设置"
             onClick={() => setOpen(false)}
           />
           <div
-            className="fixed bottom-4 left-4 right-4 z-[100] max-h-[80vh] overflow-y-auto rounded-xl border border-slate-200 bg-white p-4 shadow-2xl dark:border-white/10 dark:bg-slate-950 md:absolute md:bottom-auto md:left-auto md:right-0 md:top-[calc(100%+0.5rem)] md:w-[380px] md:max-h-[85vh]"
+            className="fixed inset-x-0 bottom-0 z-[100] max-h-[82vh] overflow-y-auto rounded-t-2xl border-t border-slate-200 bg-white p-5 shadow-2xl dark:border-white/10 dark:bg-slate-950 md:absolute md:bottom-auto md:left-auto md:right-0 md:top-[calc(100%+0.5rem)] md:w-[380px] md:max-h-[85vh] md:rounded-xl md:border md:shadow-xl animate-in slide-in-from-bottom duration-200 md:animate-none"
           >
             <div className="mb-4 flex items-start justify-between gap-4">
               <div>
