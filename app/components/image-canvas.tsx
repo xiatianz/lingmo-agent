@@ -53,24 +53,10 @@ export function ImageCanvas({
     });
   }, []);
 
-  const downloadImage = useCallback(async () => {
+  const downloadImage = useCallback(() => {
     if (!url) return;
-    try {
-      // For pollinations.ai, we can fetch and trigger a client-side download
-      const response = await fetch(url);
-      const blob = await response.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = blobUrl;
-      link.download = `lingmo-ai-art-${Date.now()}.jpg`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(blobUrl);
-    } catch {
-      // Fallback: open in new tab
-      window.open(url, "_blank");
-    }
+    const downloadUrl = `/api/download-image?url=${encodeURIComponent(url)}`;
+    window.location.href = downloadUrl;
   }, [url]);
 
   // Determine aspect ratio class
