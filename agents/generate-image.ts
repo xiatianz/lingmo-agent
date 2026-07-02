@@ -1,6 +1,6 @@
 /**
  * Image Generation Agent
- * Generates an image using BYOK (DALL-E 3) or Platform default (Pollinations AI + LLM Prompt Optimizer).
+ * Generates an image using the configured image model, with Pollinations AI as local/demo fallback.
  */
 import { HumanMessage } from '@langchain/core/messages';
 import { createModel, createLogger, enforceDailyQuota, recordTokenUsage, resolveModelEnv } from './_shared';
@@ -26,6 +26,28 @@ function getDimensions(ratio: string): { width: number; height: number } {
         default:
             return { width: 1024, height: 1024 };
     }
+}
+
+function getImageApiSize(ratio: string): string {
+    switch (ratio) {
+        case '16:9': return '1792x1024';
+        case '9:16': return '1024x1792';
+        case '4:3': return '1792x1024';
+        case '1:1':
+        default:
+            return '1024x1024';
+    }
+}
+
+function normalizeImageResponse(data: any): string {
+    const item = data?.data?.[0] ?? data?.images?.[0] ?? data?.output?.[0];
+    const url = item?.url ?? item?.image_url ?? (typeof item === 'string' ? item : '');
+    if (url) return url;
+
+    const b64 = item?.b64_json ?? item?.base64 ?? data?.b64_json ?? data?.image_base64;
+    if (b64) return b64.startsWith('data:') ? b64 : `data:image/png;base64,${b64}`;
+
+    return '';
 }
 
 export async function onRequest(context: any) {
@@ -94,13 +116,13 @@ export async function onRequest(context: any) {
         let imageUrl = '';
 
         // Step 2: Generate image
-        // If the user has a custom OpenAI API Key, use DALL-E 3 (or whatever model config is passed)
-        if (modelConfig.usingUserKey && modelConfig.env.AI_GATEWAY_API_KEY) {
+        const configuredImageModel = modelConfig.env.AI_GATEWAY_IMAGE_MODEL?.trim();
+        if ((modelConfig.usingUserKey || configuredImageModel) && modelConfig.env.AI_GATEWAY_API_KEY) {
             const apiBaseUrl = modelConfig.env.AI_GATEWAY_BASE_URL.replace(/\/chat\/completions$/, '').replace(/\/$/, '');
             const targetUrl = `${apiBaseUrl}/images/generations`;
-            const modelName = modelConfig.env.AI_GATEWAY_IMAGE_MODEL || 'dall-e-3';
+            const modelName = configuredImageModel || 'dall-e-3';
 
-            logger.log(`Using BYOK to generate image via DALL-E at ${targetUrl}`);
+            logger.log(`Using image model "${modelName}" at ${targetUrl}`);
             const res = await fetch(targetUrl, {
                 method: 'POST',
                 headers: {
@@ -111,7 +133,7 @@ export async function onRequest(context: any) {
                     model: modelName,
                     prompt: finalPrompt,
                     n: 1,
-                    size: aspectRatio === '1:1' ? '1024x1024' : (aspectRatio === '16:9' ? '1792x1024' : '1024x1792'),
+                    size: getImageApiSize(aspectRatio),
                     quality: 'standard',
                 }),
             });
@@ -122,9 +144,9 @@ export async function onRequest(context: any) {
             }
 
             const data = await res.json();
-            imageUrl = data?.data?.[0]?.url;
+            imageUrl = normalizeImageResponse(data);
             if (!imageUrl) {
-                throw new Error('DALL-E response missing image URL');
+                throw new Error('Image generation response missing image URL');
             }
         } else {
             // Default Platform: Use Pollinations AI (free, fast, high quality Stable Diffusion/Flux)
