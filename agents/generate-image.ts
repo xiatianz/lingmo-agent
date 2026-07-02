@@ -115,6 +115,7 @@ async function generateImageWithCloudBase(env: any, payload: {
     style: string;
     seed?: number;
     size: string;
+    model?: string;
 }) {
     const config = getCloudBaseConfig(env);
     const app = tcb.init({
@@ -135,6 +136,7 @@ async function generateImageWithCloudBase(env: any, payload: {
             style: payload.style,
             seed: payload.seed,
             size: payload.size,
+            model: payload.model,
         },
     });
 
@@ -220,6 +222,7 @@ export async function onRequest(context: any) {
                 style,
                 seed,
                 size: getImageApiSize(aspectRatio),
+                model: configuredImageModel,
             });
             imageUrl = result.url;
             if (result.prompt) finalPrompt = result.prompt;
