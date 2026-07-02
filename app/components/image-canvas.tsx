@@ -77,12 +77,12 @@ export function ImageCanvas({
   return (
     <div className="flex flex-1 flex-col rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-slate-950 lg:h-full lg:overflow-hidden">
       {/* Top action bar */}
-      <div className="mb-3 flex items-center justify-between border-b border-slate-100 pb-3 dark:border-white/5">
+      <div className="mb-3 flex flex-col gap-2 pb-3 border-b border-slate-100 dark:border-white/5 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-100">
           创意画布
         </h2>
         {url && !isGenerating && (
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
             <button
               onClick={() => copyToClipboard(prompt || "")}
               className="flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-600 shadow-sm transition hover:bg-slate-50 dark:border-white/10 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-white/5"

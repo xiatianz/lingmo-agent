@@ -105,7 +105,7 @@ export function ApiSettingsControls({ refreshKey = 0 }: ApiSettingsControlsProps
     setStatus({ type: "success", text: "已删除本地 API 设置。" });
   }, []);
 
-  const usageLabel = usage ? `${usage.remaining ?? Math.max(0, usage.limit - usage.count)}/${usage.limit}` : "--/20";
+  const usageLabel = usage ? `${usage.remaining ?? Math.max(0, usage.limit - usage.count)}/${usage.limit}` : "--/50";
 
   return (
     <div className="relative flex items-center gap-2">
@@ -129,7 +129,7 @@ export function ApiSettingsControls({ refreshKey = 0 }: ApiSettingsControlsProps
         >
           {localApiEnabled ? <KeyIcon className="h-3.5 w-3.5" /> : <GaugeIcon className="h-3.5 w-3.5" />}
         </span>
-        <span className="hidden whitespace-nowrap sm:inline">
+        <span className="whitespace-nowrap">
           {localApiEnabled ? "自有 API" : `今日剩余 ${usageLabel}`}
         </span>
         <ChevronIcon className={cn("h-3 w-3 transition-transform", open && "rotate-180")} />
@@ -139,12 +139,12 @@ export function ApiSettingsControls({ refreshKey = 0 }: ApiSettingsControlsProps
         <>
           <button
             type="button"
-            className="fixed inset-0 z-[90] cursor-default"
+            className="fixed inset-0 z-[90] cursor-default bg-black/40 backdrop-blur-xs md:bg-transparent md:backdrop-blur-none"
             aria-label="关闭 API 设置"
             onClick={() => setOpen(false)}
           />
           <div
-            className="absolute right-0 top-[calc(100%+0.5rem)] z-[100] w-[min(92vw,390px)] rounded-xl border border-slate-200 bg-white p-4 shadow-2xl dark:border-white/10 dark:bg-slate-950"
+            className="fixed bottom-4 left-4 right-4 z-[100] max-h-[80vh] overflow-y-auto rounded-xl border border-slate-200 bg-white p-4 shadow-2xl dark:border-white/10 dark:bg-slate-950 md:absolute md:bottom-auto md:left-auto md:right-0 md:top-[calc(100%+0.5rem)] md:w-[380px] md:max-h-[85vh]"
           >
             <div className="mb-4 flex items-start justify-between gap-4">
               <div>
@@ -234,9 +234,7 @@ export function ApiSettingsControls({ refreshKey = 0 }: ApiSettingsControlsProps
                   autoComplete="off"
                 />
               </Field>
-              <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
-                API Key 仅存储在本机浏览器 localStorage。这里的生图配置仅适用于 OpenAI/9Router 通道；CloudBase 生图请在服务端环境变量中设置 AI_IMAGE_PROVIDER=cloudbase 和云函数名。
-              </p>
+
 
               {status && (
                 <p className={cn("text-xs", status.type === "error" ? "text-red-600 dark:text-red-300" : "text-emerald-600 dark:text-emerald-300")}>

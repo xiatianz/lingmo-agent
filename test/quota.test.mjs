@@ -37,10 +37,10 @@ function createKv(initial = {}) {
 }
 
 test("daily request limit defaults to 20 and accepts positive env overrides", () => {
-  assert.equal(getDailyRequestLimit({}), 20);
+  assert.equal(getDailyRequestLimit({}), 50);
   assert.equal(getDailyRequestLimit({ DEFAULT_DAILY_REQUEST_LIMIT: "7" }), 7);
-  assert.equal(getDailyRequestLimit({ DEFAULT_DAILY_REQUEST_LIMIT: "0" }), 20);
-  assert.equal(getDailyRequestLimit({ DEFAULT_DAILY_REQUEST_LIMIT: "abc" }), 20);
+  assert.equal(getDailyRequestLimit({ DEFAULT_DAILY_REQUEST_LIMIT: "0" }), 50);
+  assert.equal(getDailyRequestLimit({ DEFAULT_DAILY_REQUEST_LIMIT: "abc" }), 50);
 });
 
 test("parses local BYOK config from request headers without persisting it", () => {
