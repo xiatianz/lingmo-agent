@@ -235,7 +235,7 @@ export function ApiSettingsControls({ refreshKey = 0 }: ApiSettingsControlsProps
                 />
               </Field>
               <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
-                API Key 仅存储在本机浏览器 localStorage。9Router 生图地址请填写 API 根路径或 /v1 路径，不要填写控制台网页地址；生图模型请使用 /v1/models/image 中的模型或 Image Combo。
+                API Key 仅存储在本机浏览器 localStorage。这里的生图配置仅适用于 OpenAI/9Router 通道；CloudBase 生图请在服务端环境变量中设置 AI_IMAGE_PROVIDER=cloudbase 和云函数名。
               </p>
 
               {status && (

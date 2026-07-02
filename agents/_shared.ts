@@ -13,9 +13,16 @@ export interface AgentEnv {
     AI_GATEWAY_API_KEY: string;
     AI_GATEWAY_BASE_URL: string;
     AI_GATEWAY_MODEL?: string;
+    AI_IMAGE_PROVIDER?: string;
     AI_GATEWAY_IMAGE_API_KEY?: string;
     AI_GATEWAY_IMAGE_BASE_URL?: string;
     AI_GATEWAY_IMAGE_MODEL?: string;
+    CLOUDBASE_ENV_ID?: string;
+    CLOUDBASE_REGION?: string;
+    CLOUDBASE_ACCESS_KEY?: string;
+    CLOUDBASE_SECRET_ID?: string;
+    CLOUDBASE_SECRET_KEY?: string;
+    CLOUDBASE_IMAGE_FUNCTION_NAME?: string;
 }
 
 interface AgentContextEnv extends Record<string, string | undefined> {
@@ -38,9 +45,16 @@ export function getAgentEnv(contextEnv: Record<string, string | undefined> | und
         AI_GATEWAY_API_KEY: source.AI_GATEWAY_API_KEY!,
         AI_GATEWAY_BASE_URL: source.AI_GATEWAY_BASE_URL!,
         AI_GATEWAY_MODEL: source.AI_GATEWAY_MODEL,
+        AI_IMAGE_PROVIDER: source.AI_IMAGE_PROVIDER,
         AI_GATEWAY_IMAGE_API_KEY: source.AI_GATEWAY_IMAGE_API_KEY,
         AI_GATEWAY_IMAGE_BASE_URL: source.AI_GATEWAY_IMAGE_BASE_URL,
         AI_GATEWAY_IMAGE_MODEL: source.AI_GATEWAY_IMAGE_MODEL,
+        CLOUDBASE_ENV_ID: source.CLOUDBASE_ENV_ID,
+        CLOUDBASE_REGION: source.CLOUDBASE_REGION,
+        CLOUDBASE_ACCESS_KEY: source.CLOUDBASE_ACCESS_KEY,
+        CLOUDBASE_SECRET_ID: source.CLOUDBASE_SECRET_ID,
+        CLOUDBASE_SECRET_KEY: source.CLOUDBASE_SECRET_KEY,
+        CLOUDBASE_IMAGE_FUNCTION_NAME: source.CLOUDBASE_IMAGE_FUNCTION_NAME,
     };
 }
 
@@ -86,6 +100,7 @@ function jsonError(message: string, status: number) {
 export async function resolveModelEnv(context: any): Promise<ModelResolution> {
     const contextEnv = (context?.env ?? {}) as AgentContextEnv;
     const requestConfig = parseRequestModelConfig(context?.request);
+    const platformEnv = getAgentEnv(contextEnv);
 
     if (requestConfig) {
         return {
@@ -93,16 +108,23 @@ export async function resolveModelEnv(context: any): Promise<ModelResolution> {
                 AI_GATEWAY_API_KEY: requestConfig.apiKey,
                 AI_GATEWAY_BASE_URL: requestConfig.baseUrl,
                 AI_GATEWAY_MODEL: requestConfig.model,
+                AI_IMAGE_PROVIDER: platformEnv.AI_IMAGE_PROVIDER,
                 AI_GATEWAY_IMAGE_API_KEY: requestConfig.imageApiKey,
                 AI_GATEWAY_IMAGE_BASE_URL: requestConfig.imageBaseUrl,
                 AI_GATEWAY_IMAGE_MODEL: requestConfig.imageModel,
+                CLOUDBASE_ENV_ID: platformEnv.CLOUDBASE_ENV_ID,
+                CLOUDBASE_REGION: platformEnv.CLOUDBASE_REGION,
+                CLOUDBASE_ACCESS_KEY: platformEnv.CLOUDBASE_ACCESS_KEY,
+                CLOUDBASE_SECRET_ID: platformEnv.CLOUDBASE_SECRET_ID,
+                CLOUDBASE_SECRET_KEY: platformEnv.CLOUDBASE_SECRET_KEY,
+                CLOUDBASE_IMAGE_FUNCTION_NAME: platformEnv.CLOUDBASE_IMAGE_FUNCTION_NAME,
             },
             userId: null,
             usingUserKey: true,
         };
     }
 
-    return { env: getAgentEnv(contextEnv), userId: null, usingUserKey: false };
+    return { env: platformEnv, userId: null, usingUserKey: false };
 }
 
 export async function enforceDailyQuota(context: any, resolution: ModelResolution): Promise<Response | null> {

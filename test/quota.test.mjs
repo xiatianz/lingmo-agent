@@ -54,6 +54,9 @@ test("parses local BYOK config from request headers without persisting it", () =
     apiKey: "sk-user",
     baseUrl: "https://api.example.com/v1",
     model: "gpt-test",
+    imageApiKey: "sk-user",
+    imageBaseUrl: "https://api.example.com/v1",
+    imageModel: "dall-e-3",
   });
 });
 

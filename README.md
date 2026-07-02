@@ -24,8 +24,30 @@ This template orchestrates a full content creation pipeline — from topic resea
 | `AI_GATEWAY_API_KEY` | Yes | Model gateway API key. Use your Makers Models API Key, or any OpenAI-compatible provider key. |
 | `AI_GATEWAY_BASE_URL` | Yes | Gateway base URL. For Makers Models, use `https://ai-gateway.edgeone.link/v1`. |
 | `AI_GATEWAY_MODEL` | No | Model ID. Defaults to `@makers/deepseek-v4-flash`. |
+| `AI_IMAGE_PROVIDER` | No | Image provider. Set to `cloudbase` to call a CloudBase image cloud function directly; leave empty for OpenAI-compatible image APIs. |
+| `CLOUDBASE_ENV_ID` | Required for CloudBase image | CloudBase environment ID. |
+| `CLOUDBASE_REGION` | No | CloudBase region, for example `ap-shanghai`. |
+| `CLOUDBASE_ACCESS_KEY` | Required for CloudBase image | CloudBase access key. You can alternatively use `CLOUDBASE_SECRET_ID` and `CLOUDBASE_SECRET_KEY`. |
+| `CLOUDBASE_IMAGE_FUNCTION_NAME` | Required for CloudBase image | Name of the image-generation cloud function created in the CloudBase console. |
+| `AI_GATEWAY_IMAGE_API_KEY` | No | OpenAI-compatible image API key; defaults to `AI_GATEWAY_API_KEY`. |
+| `AI_GATEWAY_IMAGE_BASE_URL` | No | OpenAI-compatible image API base URL; defaults to `AI_GATEWAY_BASE_URL`. |
+| `AI_GATEWAY_IMAGE_MODEL` | No | OpenAI-compatible image model ID. |
 
 This template follows the OpenAI-compatible standard — point these at Makers Models or any compatible provider.
+
+### CloudBase image generation
+
+If your image quota comes from WeChat CloudBase, create the image-generation cloud function from the CloudBase model page, then configure:
+
+```bash
+AI_IMAGE_PROVIDER=cloudbase
+CLOUDBASE_ENV_ID=your-cloudbase-env-id
+CLOUDBASE_REGION=ap-shanghai
+CLOUDBASE_ACCESS_KEY=your-cloudbase-access-key
+CLOUDBASE_IMAGE_FUNCTION_NAME=your-image-function-name
+```
+
+With this enabled, prompt optimization still uses the text model from `AI_GATEWAY_MODEL`, while image generation calls the CloudBase cloud function directly instead of 9Router/OpenAI-compatible image APIs.
 
 ### How to get AI_GATEWAY_API_KEY
 

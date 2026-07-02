@@ -3,6 +3,7 @@
  * Generates an image using the configured image model, with Pollinations AI as local/demo fallback.
  */
 import { HumanMessage } from '@langchain/core/messages';
+import tcb from '@cloudbase/node-sdk';
 import { createModel, createLogger, enforceDailyQuota, recordTokenUsage, resolveModelEnv } from './_shared';
 
 const logger = createLogger('generate-image');
@@ -62,6 +63,82 @@ function normalizeImageResponse(data: any): string {
     if (b64) return b64.startsWith('data:') ? b64 : `data:image/png;base64,${b64}`;
 
     return '';
+}
+
+function normalizeCloudBaseImageResponse(result: any): { url: string; prompt?: string } {
+    const payload = result?.result ?? result;
+    const success = payload?.success;
+    const url = payload?.imageUrl ?? payload?.image_url ?? payload?.url ?? payload?.data?.imageUrl ?? payload?.data?.url ?? '';
+
+    if (success === false) {
+        const code = payload?.code ? `${payload.code}: ` : '';
+        throw new Error(`CloudBase image generation failed: ${code}${payload?.message || 'Unknown error'}`);
+    }
+
+    if (!url) {
+        throw new Error('CloudBase image generation response missing imageUrl');
+    }
+
+    return {
+        url,
+        prompt: payload?.revised_prompt ?? payload?.revisedPrompt ?? payload?.prompt,
+    };
+}
+
+function getCloudBaseConfig(env: any) {
+    const envId = env.CLOUDBASE_ENV_ID?.trim();
+    const functionName = env.CLOUDBASE_IMAGE_FUNCTION_NAME?.trim();
+    const accessKey = env.CLOUDBASE_ACCESS_KEY?.trim();
+    const secretId = env.CLOUDBASE_SECRET_ID?.trim();
+    const secretKey = env.CLOUDBASE_SECRET_KEY?.trim();
+
+    if (!envId) throw new Error('Missing environment variable: CLOUDBASE_ENV_ID');
+    if (!functionName) throw new Error('Missing environment variable: CLOUDBASE_IMAGE_FUNCTION_NAME');
+    if (!accessKey && !(secretId && secretKey)) {
+        throw new Error('Missing CloudBase credentials: set CLOUDBASE_ACCESS_KEY or CLOUDBASE_SECRET_ID/CLOUDBASE_SECRET_KEY');
+    }
+
+    return {
+        envId,
+        functionName,
+        region: env.CLOUDBASE_REGION?.trim(),
+        accessKey,
+        secretId,
+        secretKey,
+    };
+}
+
+async function generateImageWithCloudBase(env: any, payload: {
+    prompt: string;
+    rawPrompt: string;
+    aspectRatio: string;
+    style: string;
+    seed?: number;
+    size: string;
+}) {
+    const config = getCloudBaseConfig(env);
+    const app = tcb.init({
+        env: config.envId,
+        region: config.region,
+        accessKey: config.accessKey,
+        secretId: config.secretId,
+        secretKey: config.secretKey,
+    });
+
+    logger.log(`Using CloudBase image function "${config.functionName}" in env "${config.envId}"`);
+    const res = await app.callFunction({
+        name: config.functionName,
+        data: {
+            prompt: payload.prompt,
+            rawPrompt: payload.rawPrompt,
+            aspectRatio: payload.aspectRatio,
+            style: payload.style,
+            seed: payload.seed,
+            size: payload.size,
+        },
+    });
+
+    return normalizeCloudBaseImageResponse(res.result);
 }
 
 export async function onRequest(context: any) {
@@ -130,11 +207,23 @@ export async function onRequest(context: any) {
         let imageUrl = '';
 
         // Step 2: Generate image
+        const imageProvider = modelConfig.env.AI_IMAGE_PROVIDER?.trim().toLowerCase();
         const configuredImageModel = modelConfig.env.AI_GATEWAY_IMAGE_MODEL?.trim();
         const imageApiKey = modelConfig.env.AI_GATEWAY_IMAGE_API_KEY?.trim() || modelConfig.env.AI_GATEWAY_API_KEY;
         const imageBaseUrl = modelConfig.env.AI_GATEWAY_IMAGE_BASE_URL?.trim() || modelConfig.env.AI_GATEWAY_BASE_URL;
 
-        if ((modelConfig.usingUserKey || configuredImageModel) && imageApiKey && imageBaseUrl) {
+        if (imageProvider === 'cloudbase') {
+            const result = await generateImageWithCloudBase(modelConfig.env, {
+                prompt: finalPrompt,
+                rawPrompt: prompt,
+                aspectRatio,
+                style,
+                seed,
+                size: getImageApiSize(aspectRatio),
+            });
+            imageUrl = result.url;
+            if (result.prompt) finalPrompt = result.prompt;
+        } else if ((modelConfig.usingUserKey || configuredImageModel) && imageApiKey && imageBaseUrl) {
             const targetUrl = getImageGenerationUrl(imageBaseUrl);
             const modelName = configuredImageModel || 'dall-e-3';
 

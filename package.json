@@ -10,6 +10,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@cloudbase/node-sdk": "^3.18.3",
     "@langchain/core": "^1.1.40",
     "@langchain/openai": "^1.4.4",
     "autoprefixer": "^10.4.21",
