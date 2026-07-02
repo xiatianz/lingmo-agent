@@ -44,7 +44,7 @@ function getCloudBaseImageSize(ratio: string): string {
     switch (ratio) {
         case '16:9': return '1280x720';
         case '9:16': return '720x1280';
-        case '4:3': return '1024x768';
+        case '4:3': return '1280x720'; // CloudBase supports only ['1024x1024', '1280x720', '720x1280', '1280x1280']
         case '1:1':
         default:
             return '1024x1024';
