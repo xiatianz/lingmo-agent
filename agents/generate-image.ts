@@ -117,8 +117,11 @@ export async function onRequest(context: any) {
 
         // Step 2: Generate image
         const configuredImageModel = modelConfig.env.AI_GATEWAY_IMAGE_MODEL?.trim();
-        if ((modelConfig.usingUserKey || configuredImageModel) && modelConfig.env.AI_GATEWAY_API_KEY) {
-            const apiBaseUrl = modelConfig.env.AI_GATEWAY_BASE_URL.replace(/\/chat\/completions$/, '').replace(/\/$/, '');
+        const imageApiKey = modelConfig.env.AI_GATEWAY_IMAGE_API_KEY?.trim() || modelConfig.env.AI_GATEWAY_API_KEY;
+        const imageBaseUrl = modelConfig.env.AI_GATEWAY_IMAGE_BASE_URL?.trim() || modelConfig.env.AI_GATEWAY_BASE_URL;
+
+        if ((modelConfig.usingUserKey || configuredImageModel) && imageApiKey && imageBaseUrl) {
+            const apiBaseUrl = imageBaseUrl.replace(/\/chat\/completions$/, '').replace(/\/$/, '');
             const targetUrl = `${apiBaseUrl}/images/generations`;
             const modelName = configuredImageModel || 'dall-e-3';
 
@@ -127,7 +130,7 @@ export async function onRequest(context: any) {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${modelConfig.env.AI_GATEWAY_API_KEY}`,
+                    'Authorization': `Bearer ${imageApiKey}`,
                 },
                 body: JSON.stringify({
                     model: modelName,

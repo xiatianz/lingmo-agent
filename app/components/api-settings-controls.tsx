@@ -81,8 +81,10 @@ export function ApiSettingsControls({ refreshKey = 0 }: ApiSettingsControlsProps
       providerLabel: form.providerLabel.trim() || DEFAULT_LOCAL_API_SETTINGS.providerLabel,
       baseUrl: form.baseUrl.trim() || DEFAULT_LOCAL_API_SETTINGS.baseUrl,
       model: form.model.trim(),
+      imageBaseUrl: form.imageBaseUrl.trim(),
       imageModel: form.imageModel.trim() || DEFAULT_LOCAL_API_SETTINGS.imageModel,
       apiKey: form.apiKey.trim(),
+      imageApiKey: form.imageApiKey.trim(),
       enabled: form.enabled,
     };
 
@@ -188,6 +190,14 @@ export function ApiSettingsControls({ refreshKey = 0 }: ApiSettingsControlsProps
                   placeholder="https://api.openai.com/v1"
                 />
               </Field>
+              <Field label="生图 Base URL (可选)">
+                <input
+                  value={form.imageBaseUrl}
+                  onChange={(event) => setForm((prev) => ({ ...prev, imageBaseUrl: event.target.value }))}
+                  className={inputClassName}
+                  placeholder="留空则使用上方 Base URL"
+                />
+              </Field>
               <Field label="文本模型 (Text Model)">
                 <input
                   value={form.model}
@@ -214,8 +224,18 @@ export function ApiSettingsControls({ refreshKey = 0 }: ApiSettingsControlsProps
                   autoComplete="off"
                 />
               </Field>
+              <Field label="生图 API Key (可选)">
+                <input
+                  value={form.imageApiKey}
+                  onChange={(event) => setForm((prev) => ({ ...prev, imageApiKey: event.target.value }))}
+                  className={inputClassName}
+                  placeholder="留空则使用上方 API Key"
+                  type="password"
+                  autoComplete="off"
+                />
+              </Field>
               <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
-                API Key 仅存储在本机浏览器 localStorage。清空浏览器缓存、换浏览器或换设备后需要重新填写。
+                API Key 仅存储在本机浏览器 localStorage。若你的中转平台将 Chat 和生图分成不同通道，请填写生图专用 Base URL。
               </p>
 
               {status && (

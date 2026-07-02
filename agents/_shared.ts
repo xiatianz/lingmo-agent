@@ -13,6 +13,8 @@ export interface AgentEnv {
     AI_GATEWAY_API_KEY: string;
     AI_GATEWAY_BASE_URL: string;
     AI_GATEWAY_MODEL?: string;
+    AI_GATEWAY_IMAGE_API_KEY?: string;
+    AI_GATEWAY_IMAGE_BASE_URL?: string;
     AI_GATEWAY_IMAGE_MODEL?: string;
 }
 
@@ -36,6 +38,8 @@ export function getAgentEnv(contextEnv: Record<string, string | undefined> | und
         AI_GATEWAY_API_KEY: source.AI_GATEWAY_API_KEY!,
         AI_GATEWAY_BASE_URL: source.AI_GATEWAY_BASE_URL!,
         AI_GATEWAY_MODEL: source.AI_GATEWAY_MODEL,
+        AI_GATEWAY_IMAGE_API_KEY: source.AI_GATEWAY_IMAGE_API_KEY,
+        AI_GATEWAY_IMAGE_BASE_URL: source.AI_GATEWAY_IMAGE_BASE_URL,
         AI_GATEWAY_IMAGE_MODEL: source.AI_GATEWAY_IMAGE_MODEL,
     };
 }
@@ -89,6 +93,8 @@ export async function resolveModelEnv(context: any): Promise<ModelResolution> {
                 AI_GATEWAY_API_KEY: requestConfig.apiKey,
                 AI_GATEWAY_BASE_URL: requestConfig.baseUrl,
                 AI_GATEWAY_MODEL: requestConfig.model,
+                AI_GATEWAY_IMAGE_API_KEY: requestConfig.imageApiKey,
+                AI_GATEWAY_IMAGE_BASE_URL: requestConfig.imageBaseUrl,
                 AI_GATEWAY_IMAGE_MODEL: requestConfig.imageModel,
             },
             userId: null,
